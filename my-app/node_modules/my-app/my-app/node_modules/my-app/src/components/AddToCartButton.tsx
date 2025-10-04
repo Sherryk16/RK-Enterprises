@@ -40,3 +40,4 @@ const AddToCartButton = ({ product }: AddToCartButtonProps) => {
 export default AddToCartButton;
 
 
+
