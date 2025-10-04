@@ -2,11 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { User } from '@supabase/supabase-js'; // Import User type
+interface AuthUser {
+  email: string | undefined;
+}
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const router = useRouter();
 
   const checkUser = useCallback(async () => {
@@ -16,7 +18,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     if (!isAuthenticated || !adminEmail) {
       router.push('/admin/login');
     } else {
-      setUser({ email: adminEmail } as User); // Assert as User type, assuming only email is needed here
+      setUser({ email: adminEmail });
     }
     setLoading(false);
   }, [router]); // Add router to useCallback dependencies
