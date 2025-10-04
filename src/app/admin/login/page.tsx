@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 
 export default function AdminLogin() {
   const [email, setEmail] = useState('');
@@ -16,15 +15,23 @@ export default function AdminLogin() {
     setLoading(true);
     setError('');
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    // Check against environment variables
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
+    const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD;
 
-    if (error) {
-      setError(error.message);
-    } else {
+    if (!adminEmail || !adminPassword) {
+      setError('Admin credentials are not configured. Please set NEXT_PUBLIC_ADMIN_EMAIL and NEXT_PUBLIC_ADMIN_PASSWORD in your environment variables.');
+      setLoading(false);
+      return;
+    }
+
+    if (email === adminEmail && password === adminPassword) {
+      // Simple session storage for admin login
+      sessionStorage.setItem('admin_authenticated', 'true');
+      sessionStorage.setItem('admin_email', email);
       router.push('/admin');
+    } else {
+      setError('Invalid email or password');
     }
     setLoading(false);
   };
@@ -87,6 +94,7 @@ export default function AdminLogin() {
     </div>
   );
 }
+
 
 
 

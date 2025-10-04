@@ -1,7 +1,43 @@
 import { debugDatabaseContents } from '@/lib/products';
 
+interface CategoryDebugData {
+  id: string;
+  name: string;
+  slug?: string;
+  description?: string;
+}
+
+interface ProductByCategoryDebugData {
+  categoryName: string;
+  categorySlug: string;
+  productCount: number;
+}
+
+interface ProductDebugData {
+  id: string;
+  name: string;
+  category_id: string;
+  categories?: { id: string; name: string; slug: string }[]; // Updated to match actual data structure
+  show_in_office: boolean;
+  slug: string;
+}
+
+interface DebugSummary {
+  totalCategories: number;
+  totalProducts: number;
+  officeProducts: number;
+  productsByCategory: ProductByCategoryDebugData[];
+}
+
+interface DebugContents {
+  error?: string;
+  summary?: DebugSummary;
+  categories?: CategoryDebugData[];
+  products?: ProductDebugData[];
+}
+
 export default async function DebugPage() {
-  const debugData = await debugDatabaseContents();
+  const debugData: DebugContents = await debugDatabaseContents();
 
   if (debugData.error) {
     return (
@@ -19,33 +55,36 @@ export default async function DebugPage() {
       <h1 className="text-3xl font-bold mb-6">Database Debug Information</h1>
       
       {/* Summary */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Summary</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">{debugData.summary.totalCategories}</div>
-            <div className="text-sm text-gray-600">Total Categories</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-600">{debugData.summary.totalProducts}</div>
-            <div className="text-sm text-gray-600">Total Products</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-purple-600">{debugData.summary.officeProducts}</div>
-            <div className="text-sm text-gray-600">Office Products</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-orange-600">
-              {debugData.summary.productsByCategory.find(p => p.categoryName.toLowerCase().includes('office'))?.productCount || 0}
+      {debugData.summary && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Summary</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-blue-600">{debugData.summary.totalCategories}</div>
+              <div className="text-sm text-gray-600">Total Categories</div>
             </div>
-            <div className="text-sm text-gray-600">Office Furniture Products</div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">{debugData.summary.totalProducts}</div>
+              <div className="text-sm text-gray-600">Total Products</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-purple-600">{debugData.summary.officeProducts}</div>
+              <div className="text-sm text-gray-600">Office Products</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-orange-600">
+                {debugData.summary.productsByCategory.find(p => p.categoryName.toLowerCase().includes('office'))?.productCount || 0}
+              </div>
+              <div className="text-sm text-gray-600">Office Furniture Products</div>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Categories */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Categories ({debugData.categories.length})</h2>
+      {debugData.categories && (
+        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Categories ({debugData.categories.length})</h2>
         <div className="overflow-x-auto">
           <table className="min-w-full table-auto">
             <thead>
@@ -57,7 +96,7 @@ export default async function DebugPage() {
               </tr>
             </thead>
             <tbody>
-              {debugData.categories.map((category: any) => (
+              {debugData.categories.map((category: CategoryDebugData) => (
                 <tr key={category.id} className="border-b">
                   <td className="px-4 py-2 font-mono text-sm">{category.id}</td>
                   <td className="px-4 py-2 font-semibold">{category.name}</td>
@@ -68,13 +107,15 @@ export default async function DebugPage() {
             </tbody>
           </table>
         </div>
-      </div>
+        </div>
+      )}
 
       {/* Products by Category */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Products by Category</h2>
-        <div className="space-y-4">
-          {debugData.summary.productsByCategory.map((item: any) => (
+      {debugData.summary && (
+        <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Products by Category</h2>
+          <div className="space-y-4">
+            {debugData.summary.productsByCategory.map((item: ProductByCategoryDebugData) => (
             <div key={item.categoryName} className="flex justify-between items-center p-3 bg-gray-50 rounded">
               <div>
                 <span className="font-semibold">{item.categoryName}</span>
@@ -83,12 +124,14 @@ export default async function DebugPage() {
               <div className="text-lg font-bold text-blue-600">{item.productCount} products</div>
             </div>
           ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Sample Products */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h2 className="text-xl font-semibold mb-4">Sample Products (First 10)</h2>
+      {debugData.products && (
+        <div className="bg-white border border-gray-200 rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">Sample Products (First 10)</h2>
         <div className="overflow-x-auto">
           <table className="min-w-full table-auto">
             <thead>
@@ -100,11 +143,11 @@ export default async function DebugPage() {
               </tr>
             </thead>
             <tbody>
-              {debugData.products.slice(0, 10).map((product: any) => (
+              {debugData.products.slice(0, 10).map((product: ProductDebugData) => (
                 <tr key={product.id} className="border-b">
                   <td className="px-4 py-2">{product.name}</td>
                   <td className="px-4 py-2 font-mono text-sm">{product.category_id}</td>
-                  <td className="px-4 py-2">{product.categories?.name || 'No category'}</td>
+                  <td className="px-4 py-2">{product.categories?.[0]?.name || 'No category'}</td>
                   <td className="px-4 py-2">
                     <span className={`px-2 py-1 rounded text-xs ${product.show_in_office ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
                       {product.show_in_office ? 'Yes' : 'No'}
@@ -115,20 +158,21 @@ export default async function DebugPage() {
             </tbody>
           </table>
         </div>
-      </div>
+        </div>
+      )}
 
       {/* Instructions */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mt-6">
-        <h2 className="text-xl font-semibold mb-4">How to Fix "0 Products in Office Furniture"</h2>
+        <h2 className="text-xl font-semibold mb-4">How to Fix &quot;0 Products in Office Furniture&quot;</h2>
         <div className="space-y-3 text-sm">
           <div>
-            <strong>Option 1:</strong> Make sure you have an "Office Furniture" category in your database and assign products to it via <code>category_id</code>.
+            <strong>Option 1:</strong> Make sure you have an &quot;Office Furniture&quot; category in your database and assign products to it via <code>category_id</code>.
           </div>
           <div>
-            <strong>Option 2:</strong> Mark products with <code>show_in_office: true</code> flag - these will appear in Office Furniture even if they're in other categories.
+            <strong>Option 2:</strong> Mark products with <code>show_in_office: true</code> flag - these will appear in Office Furniture even if they&apos;re in other categories.
           </div>
           <div>
-            <strong>Option 3:</strong> Use the admin panel to edit products and set their category to "Office Furniture".
+            <strong>Option 3:</strong> Use the admin panel to edit products and set their category to &quot;Office Furniture&quot;.
           </div>
         </div>
       </div>

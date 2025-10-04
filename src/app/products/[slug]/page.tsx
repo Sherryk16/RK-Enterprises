@@ -6,7 +6,7 @@ import { notFound, useRouter } from 'next/navigation';
 import ProductCard from '@/components/ProductCard';
 import AddToCartButton from '@/components/AddToCartButton';
 import { useCart } from '@/context/CartContext';
-import { useEffect, useState, use } from 'react'; // Import use
+import { useEffect, useState, use } from 'react'; // Revert to previous imports
 import Link from 'next/link'; // Added missing import for Link
 import { cleanHtml } from '@/lib/utils'; // Import cleanHtml
 
@@ -32,15 +32,15 @@ interface Product {
   slug: string;
 }
 
-export default function ProductDetailPage({ params }: { params: { slug: string } }) {
-  const resolvedParams = use(params); // Directly use params
+export default function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = use(params);
   const slug = resolvedParams.slug;
 
   const router = useRouter();
   const { addToCart } = useCart();
 
   const [product, setProduct] = useState<Product | null>(null);
-  const [relatedProducts, setRelatedProducts] = useState<any[]>([]);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFullDescription, setShowFullDescription] = useState(false); // State for toggling full description
@@ -71,13 +71,19 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
         setSelectedImageIndex(0); // Reset selected image when product changes
 
         if (fetchedProduct?.categories?.id) {
-          const fetchedRelatedProducts = await getRelatedProducts(fetchedProduct.categories.id, fetchedProduct.id);
+          const fetchedRelatedProducts: Product[] = await getRelatedProducts(fetchedProduct.categories.id, fetchedProduct.id);
           setRelatedProducts(fetchedRelatedProducts || []);
         }
-      } catch (err: any) {
-        console.error('Error fetching product for slug:', slug, err.message, err);
-        setError('Failed to load product.');
-        notFound();
+      } catch (err: unknown) {
+        console.error('Error fetching product for slug:', slug, err);
+        let errorMessage = 'Failed to load product.';
+        if (err instanceof Error) {
+          errorMessage = err.message;
+        } else if (typeof err === 'string') {
+          errorMessage = err;
+        }
+        setError(errorMessage);
+        notFound(); // Still call notFound for unrecoverable errors
       } finally {
         setLoading(false);
       }
@@ -128,13 +134,13 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
 
   const goToNextImage = () => {
     if (product && product.images && product.images.length > 1) {
-      setSelectedImageIndex((prevIndex) => (prevIndex + 1) % product.images.length);
+      setSelectedImageIndex((prevIndex) => (prevIndex + 1) % product.images!.length);
     }
   };
 
   const goToPrevImage = () => {
     if (product && product.images && product.images.length > 1) {
-      setSelectedImageIndex((prevIndex) => (prevIndex - 1 + product.images.length) % product.images.length);
+      setSelectedImageIndex((prevIndex) => (prevIndex - 1 + product.images!.length) % product.images!.length);
     }
   };
 
@@ -142,20 +148,54 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
     setSelectedImageIndex(index);
   };
 
-  const truncatedDescription = product.detailed_description ? product.detailed_description.substring(0, 150) + '...' : '';
-  // Ensure truncated description also handles newlines for consistent rendering
   const renderedTruncatedDescription = product.detailed_description ? cleanHtml(product.detailed_description).substring(0, 150) + '...' : '';
 
   return (
     <div className="min-h-screen bg-white">
+      {product && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Product",
+              "name": product.name,
+              "image": product.images && product.images.length > 0 ? product.images[0] : "/placeholder-product.jpg",
+              "description": product.description || product.detailed_description || "",
+              "sku": product.id, // Using product ID as SKU
+              "offers": {
+                "@type": "Offer",
+                "url": `https://www.rkenterprises.com/products/${product.slug}`,
+                "priceCurrency": "PKR",
+                "price": product.price,
+                "itemCondition": "https://schema.org/NewCondition",
+                "availability": "https://schema.org/InStock", // Assuming products are generally in stock
+                "seller": {
+                  "@type": "Organization",
+                  "name": "RK Enterprise"
+                }
+              },
+              "aggregateRating": {
+                "@type": "AggregateRating",
+                "ratingValue": "4.5", // Default rating value
+                "reviewCount": "10" // Default review count
+              },
+              "brand": {
+                "@type": "Brand",
+                "name": "RK Enterprise"
+              }
+            })
+          }}
+        />
+      )}
       <main>
         {/* Breadcrumb */}
         <section className="py-2 bg-gray-50">
           <div className="container mx-auto px-4">
             <nav className="flex items-center space-x-2 text-sm">
-              <a href="/" className="text-gray-500 hover:text-amber-600">Home</a>
+              <Link href="/" className="text-gray-500 hover:text-amber-600">Home</Link>
               <span className="text-gray-400">/</span>
-              <a href="/shop" className="text-gray-500 hover:text-amber-600">Shop</a>
+              <Link href="/shop" className="text-gray-500 hover:text-amber-600">Shop</Link>
               <span className="text-gray-400">/</span>
               <span className="text-gray-900">{product.name}</span>
             </nav>
@@ -403,8 +443,7 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
             <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Related Products</h2>
             {relatedProducts.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
-                {relatedProducts.map((relatedProduct: any) => {
-                  // Calculate discount percentage if original_price exists
+                {relatedProducts.map((relatedProduct: Product) => {
                   let discountPercentage = 0;
                   if (relatedProduct.original_price && relatedProduct.original_price > relatedProduct.price) {
                     discountPercentage = Math.round(((relatedProduct.original_price - relatedProduct.price) / relatedProduct.original_price) * 100);
@@ -417,11 +456,11 @@ export default function ProductDetailPage({ params }: { params: { slug: string }
                       name={relatedProduct.name}
                       price={relatedProduct.price}
                       originalPrice={relatedProduct.original_price}
-                      category={relatedProduct.categories?.name || relatedProduct.category}
+                      category={relatedProduct.categories?.name || 'Unknown'}
                       slug={relatedProduct.slug}
-                      rating={relatedProduct.rating || 4.5}
-                      reviews={relatedProduct.reviews || 0}
-                      isNew={relatedProduct.is_new || false}
+                      rating={4.5}
+                      reviews={0}
+                      isNew={false}
                       discount={discountPercentage}
                       image={relatedProduct.images?.[0] || "/placeholder-product.jpg"}
                     />

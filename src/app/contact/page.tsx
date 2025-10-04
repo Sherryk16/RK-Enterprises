@@ -239,7 +239,7 @@ export default function ContactPage() {
                     <div>
                       <h3 className="text-xl font-semibold text-gray-800 mb-2">Email</h3>
                       <p className="text-gray-600">Info@rkenterpriseshub.com</p>
-                      <p className="text-sm text-gray-500 mt-1">We'll respond within 24 hours</p>
+                      <p className="text-sm text-gray-500 mt-1">We&apos;ll respond within 24 hours</p>
                     </div>
                   </div>
 

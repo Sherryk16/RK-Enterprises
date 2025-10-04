@@ -7,9 +7,27 @@ import SearchBar from '@/components/SearchBar';
 import { getAllProducts, getAllCategories } from '@/lib/products';
 import { useSearchParams } from 'next/navigation'; // Import useSearchParams
 
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  original_price?: number | null;
+  images?: string[];
+  category?: string;
+  categories?: { name: string; id: string; slug: string };
+  is_new?: boolean;
+}
+
 export default function ShopPage() {
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [priceRange, setPriceRange] = useState('');
   const [sortBy, setSortBy] = useState('featured');
@@ -18,41 +36,40 @@ export default function ShopPage() {
   const [searchTerm, setSearchTerm] = useState(initialSearchQuery);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1); // New state for current page
-  const [productsPerPage] = useState(10); // Number of products per page
-  const [totalProducts, setTotalProducts] = useState(0); // New state for total products
-
-  // Parse min/max price from priceRange string - moved before useEffect for correct scope
-  const getPriceBounds = () => {
-    let minPrice: number | undefined;
-    let maxPrice: number | undefined;
-    switch (priceRange) {
-      case 'under-10000':
-        maxPrice = 10000;
-        break;
-      case '10000-25000':
-        minPrice = 10000;
-        maxPrice = 25000;
-        break;
-      case '25000-50000':
-        minPrice = 25000;
-        maxPrice = 50000;
-        break;
-      case 'above-50000':
-        minPrice = 50000;
-        break;
-      default:
-        break;
-    }
-    return { minPrice, maxPrice };
-  };
+  const [currentPage, setCurrentPage] = useState(1);
+  const [productsPerPage] = useState(10);
+  const [totalProducts, setTotalProducts] = useState(0);
 
   useEffect(() => {
+    const getPriceBounds = () => {
+      let minPrice: number | undefined;
+      let maxPrice: number | undefined;
+      switch (priceRange) {
+        case 'under-10000':
+          maxPrice = 10000;
+          break;
+        case '10000-25000':
+          minPrice = 10000;
+          maxPrice = 25000;
+          break;
+        case '25000-50000':
+          minPrice = 25000;
+          maxPrice = 50000;
+          break;
+        case 'above-50000':
+          minPrice = 50000;
+          break;
+        default:
+          break;
+      }
+      return { minPrice, maxPrice };
+    };
+
     const fetchShopData = async () => {
       setLoading(true);
       setError(null);
       try {
-        const { minPrice, maxPrice } = getPriceBounds(); // Get bounds here inside useEffect
+        const { minPrice, maxPrice } = getPriceBounds();
 
         const [productsResult, categoriesData] = await Promise.all([
           getAllProducts(selectedCategory, minPrice, maxPrice, sortBy, searchTerm, currentPage, productsPerPage),
@@ -60,61 +77,53 @@ export default function ShopPage() {
         ]);
 
         setProducts(productsResult.products || []);
-        setTotalProducts(productsResult.totalCount || 0); // Update total products
-        setCategories(categoriesData || []);
-      } catch (err: any) {
+        setTotalProducts(productsResult.totalCount || 0);
+        setCategories((categoriesData as Category[]) || []);
+      } catch (err: unknown) {
         console.error('Error fetching shop data:', err);
-        setError('Failed to fetch products. Please try again later.');
+        let errorMessage = 'Failed to fetch products. Please try again later.';
+        if (err instanceof Error) {
+          errorMessage = err.message;
+        } else if (typeof err === 'string') {
+          errorMessage = err;
+        }
+        setError(errorMessage);
         setProducts([]);
       } finally {
         setLoading(false);
       }
     };
     fetchShopData();
-  }, [selectedCategory, priceRange, sortBy, searchTerm, currentPage]); // Add currentPage to dependencies
+  }, [selectedCategory, priceRange, sortBy, searchTerm, currentPage, productsPerPage]); // Add productsPerPage to dependencies
 
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedCategory(e.target.value);
-    setCurrentPage(1); // Reset to first page on filter change
+    setCurrentPage(1);
   };
 
   const handlePriceRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setPriceRange(e.target.value);
-    setCurrentPage(1); // Reset to first page on filter change
+    setCurrentPage(1);
   };
 
   const handleSortByChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSortBy(e.target.value);
-    setCurrentPage(1); // Reset to first page on sort change
+    setCurrentPage(1);
   };
 
   const handleSearch = (query: string) => {
     setSearchTerm(query);
-    setCurrentPage(1); // Reset to first page on search
+    setCurrentPage(1);
   };
 
-  const totalPages = Math.ceil(totalProducts / productsPerPage); // Calculate total pages
+  const totalPages = Math.ceil(totalProducts / productsPerPage);
 
   const handlePageChange = (pageNumber: number) => {
     if (pageNumber > 0 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
-      window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to top on page change
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
-
-  // Removed the duplicate useEffect and getPriceBounds outside, it's now inside the main useEffect
-
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const categoriesData = await getAllCategories();
-        setCategories(categoriesData || []);
-      } catch (err) {
-        console.error('Error fetching categories:', err);
-      }
-    };
-    fetchCategories();
-  }, []);
 
   return (
     <div className="min-h-screen bg-white">
@@ -141,7 +150,7 @@ export default function ShopPage() {
                   onChange={handleCategoryChange}
                 >
                   <option value="">All Categories</option>
-                  {categories.map((cat: any) => (
+                  {categories.map((cat: Category) => (
                     <option key={cat.id} value={cat.slug}>{cat.name}</option>
                   ))}
                 </select>
@@ -163,7 +172,7 @@ export default function ShopPage() {
                   <SearchBar 
                     onSearch={handleSearch} 
                     initialQuery={searchTerm} 
-                    debounceTime={300} // Explicitly set debounce time
+                    debounceTime={300}
                   />
                 </div>
               </div>
@@ -196,8 +205,7 @@ export default function ShopPage() {
               <div className="text-center py-10 text-gray-500"><p>No products found matching your criteria.</p></div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
-                {products.map((product: any) => {
-                  // Calculate discount percentage if original_price exists
+                {products.map((product: Product) => {
                   let discountPercentage = 0;
                   if (product.original_price && product.original_price > product.price) {
                     discountPercentage = Math.round(((product.original_price - product.price) / product.original_price) * 100);
@@ -209,11 +217,11 @@ export default function ShopPage() {
                   id={product.id}
                   name={product.name}
                   price={product.price}
-                      originalPrice={product.original_price}
-                      category={product.categories?.name || product.category}
+                      originalPrice={product.original_price || undefined}
+                      category={product.categories?.name || product.category || 'Unknown'}
                       slug={product.slug}
-                      rating={product.rating || 4.5}
-                      reviews={product.reviews || 0}
+                      rating={4.5}
+                      reviews={0}
                       isNew={product.is_new || false}
                       discount={discountPercentage}
                       image={product.images?.[0] || "/placeholder-product.jpg"}
@@ -259,9 +267,9 @@ export default function ShopPage() {
         {/* Call to Action */}
         <section className="py-16 bg-gradient-to-r from-amber-600 to-orange-600 text-white">
           <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl font-bold mb-4">Can't Find What You're Looking For?</h2>
+            <h2 className="text-3xl font-bold mb-4">Can&apos;t Find What You&apos;re Looking For?</h2>
             <p className="text-xl text-amber-100 mb-8 max-w-2xl mx-auto">
-              Contact us for custom orders or bulk purchases. We're here to help you find the perfect furniture solution.
+              Contact us for custom orders or bulk purchases. We&apos;re here to help you find the perfect furniture solution.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button className="bg-white text-amber-600 px-8 py-4 rounded-full font-semibold text-lg hover:bg-gray-100 transition-colors duration-300">

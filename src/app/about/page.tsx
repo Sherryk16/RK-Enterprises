@@ -38,7 +38,7 @@ export default function AboutPage() {
                 <div className="space-y-4 text-gray-600 leading-relaxed">
                   <p>
                     R.K. Enterprises, established with a vision to redefine living and working spaces,
-                    stands as a leading name in Pakistan's furniture industry. We specialize in both
+                    stands as a leading name in Pakistan&apos;s furniture industry. We specialize in both
                     manufacturing and importing high-quality furniture, offering an exquisite blend
                     of comfort, durability, and contemporary style to homes and offices nationwide.
                   </p>

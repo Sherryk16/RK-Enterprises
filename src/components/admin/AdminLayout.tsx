@@ -1,30 +1,33 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { User } from '@supabase/supabase-js'; // Import User type
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
+
+  const checkUser = useCallback(async () => {
+    const isAuthenticated = sessionStorage.getItem('admin_authenticated');
+    const adminEmail = sessionStorage.getItem('admin_email');
+    
+    if (!isAuthenticated || !adminEmail) {
+      router.push('/admin/login');
+    } else {
+      setUser({ email: adminEmail } as User); // Assert as User type, assuming only email is needed here
+    }
+    setLoading(false);
+  }, [router]); // Add router to useCallback dependencies
 
   useEffect(() => {
     checkUser();
-  }, []);
-
-  const checkUser = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      router.push('/admin/login');
-    } else {
-      setUser(session.user);
-    }
-    setLoading(false);
-  };
+  }, [checkUser]); // Add checkUser to useEffect dependencies
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    sessionStorage.removeItem('admin_authenticated');
+    sessionStorage.removeItem('admin_email');
     router.push('/admin/login');
   };
 

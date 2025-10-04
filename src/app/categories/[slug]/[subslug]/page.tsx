@@ -3,7 +3,37 @@ import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getSharedSubcategories } from '@/lib/products';
 import { simpleSlugify } from '@/lib/utils'; // Import simpleSlugify
-// Removed import { use } from 'react';
+import Link from 'next/link'; // Added import for Link
+
+interface CategoryData {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+interface SubcategoryData {
+  id: string;
+  name: string;
+  slug: string;
+  category_id?: string; // Optional if a shared subcategory
+}
+
+interface ProductData {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  original_price?: number | null;
+  images?: string[];
+  category_id: string;
+  categories?: { name: string; id: string; slug: string };
+  subcategory_id?: string | null;
+  subcategories?: { name: string; id: string; slug: string } | null;
+  rating?: number;
+  reviews?: number;
+  is_new?: boolean;
+  is_featured?: boolean;
+}
 
 interface SubcategoryPageProps {
   params: { slug: string; subslug: string }; // Revert params type
@@ -11,25 +41,25 @@ interface SubcategoryPageProps {
 
 async function getCategoryAndSubcategory(categorySlug: string, subcategorySlug: string) {
   console.log('getCategoryAndSubcategory: Fetching for categorySlug:', categorySlug, 'subcategorySlug:', subcategorySlug); // DEBUG
-  // First try to get category by slug
-  let { data: category, error: catErr } = await supabase
+  
+  const { data: categoryData, error: catErr } = await supabase
     .from('categories')
     .select('*')
     .eq('slug', categorySlug)
     .single();
   
+  let category: CategoryData | null = categoryData;
+
   if (catErr || !category) {
-    // Fallback: try to find by name-derived slug
-    const { data: allCategories } = await supabase.from('categories').select('*');
-    category = (allCategories || []).find((c: any) => simpleSlugify(c.name || '') === categorySlug);
+    const { data: allCategories } = await supabase.from('categories').select('*') as { data: CategoryData[] | null };
+    category = (allCategories || []).find((c: CategoryData) => simpleSlugify(c.name || '') === categorySlug) || null;
   }
   
   console.log('getCategoryAndSubcategory: Fetched category:', category); // DEBUG
   if (!category) return { category: null, subcategory: null };
 
-  // Check if this is a shared subcategory first
   const sharedSubcategories = await getSharedSubcategories();
-  const sharedSub = sharedSubcategories.find((sub: any) => 
+  const sharedSub = sharedSubcategories.find((sub: SubcategoryData & { categories: string[] }) => 
     sub.slug === subcategorySlug && (
       sub.categories.includes(categorySlug) ||
       sub.categories.includes(category.slug) ||
@@ -38,11 +68,10 @@ async function getCategoryAndSubcategory(categorySlug: string, subcategorySlug: 
         simpleSlugify(slug).includes(simpleSlugify(category.name))
       ))
     )
-  );
+  ) as (SubcategoryData & { categories: string[] }) | undefined;
   
   if (sharedSub) {
     console.log('getCategoryAndSubcategory: Found shared subcategory:', sharedSub); // DEBUG
-    // For shared subcategories, create a virtual subcategory object
     return { 
       category, 
       subcategory: {
@@ -54,21 +83,20 @@ async function getCategoryAndSubcategory(categorySlug: string, subcategorySlug: 
     };
   }
 
-  // Try to get real subcategory from database
-  let { data: subcategory, error: subErr } = await supabase
+  const { data: subcategoryData, error: subErr } = await supabase
     .from('subcategories')
     .select('*')
     .eq('slug', subcategorySlug)
     .eq('category_id', category.id)
     .single();
   
+  let subcategory: SubcategoryData | null = subcategoryData;
+
   if (subErr || !subcategory) {
-    // Fallback: try to find by name-derived slug
     const { data: allSubcategories } = await supabase
       .from('subcategories')
-      .select('*')
-      .eq('category_id', category.id);
-    subcategory = (allSubcategories || []).find((s: any) => simpleSlugify(s.name || '') === subcategorySlug);
+      .select('*') as { data: SubcategoryData[] | null };
+    subcategory = (allSubcategories || []).find((s: SubcategoryData) => simpleSlugify(s.name || '') === subcategorySlug) || null;
   }
   
   console.log('getCategoryAndSubcategory: Fetched subcategory:', subcategory); // DEBUG
@@ -81,9 +109,8 @@ async function getProductsBySubcategorySlug(categorySlug: string, subcategorySlu
   console.log('getProductsBySubcategorySlug: Resolved category:', category, 'Resolved subcategory:', subcategory); // DEBUG
   if (!category || !subcategory) return { category, subcategory, products: [] };
 
-  // Check if this is a shared subcategory
   const sharedSubcategories = await getSharedSubcategories();
-  const isSharedSubcategory = sharedSubcategories.some((sub: any) => 
+  const isSharedSubcategory = sharedSubcategories.some((sub: SubcategoryData & { categories: string[] }) => 
     sub.slug === subcategorySlug && (
       sub.categories.includes(categorySlug) ||
       sub.categories.includes(category.slug) ||
@@ -94,11 +121,9 @@ async function getProductsBySubcategorySlug(categorySlug: string, subcategorySlu
     )
   );
 
-  let products;
+  let products: ProductData[];
   if (isSharedSubcategory) {
     console.log('getProductsBySubcategorySlug: Handling as shared subcategory.'); // DEBUG
-    // For shared subcategories, we need to find products that match the subcategory name/slug
-    // First, try to find a real subcategory with this slug
     const { data: realSubcategory } = await supabase
       .from('subcategories')
       .select('id')
@@ -107,7 +132,6 @@ async function getProductsBySubcategorySlug(categorySlug: string, subcategorySlu
     
     if (realSubcategory) {
       console.log('getProductsBySubcategorySlug: Found real subcategory for shared subcategory.', realSubcategory); // DEBUG
-      // Get products by subcategory ID
       const { data, error } = await supabase
         .from('products')
         .select(`
@@ -122,9 +146,7 @@ async function getProductsBySubcategorySlug(categorySlug: string, subcategorySlu
             name,
             slug
           )
-        `)
-        .eq('subcategory_id', realSubcategory.id)
-        .order('created_at', { ascending: false });
+        `) as { data: ProductData[] | null, error: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
       if (error) {
         console.error('getProductsBySubcategorySlug: Error fetching products for real subcategory:', error); // DEBUG
         throw error;
@@ -132,8 +154,6 @@ async function getProductsBySubcategorySlug(categorySlug: string, subcategorySlu
       products = data || [];
     } else {
       console.log('getProductsBySubcategorySlug: No real subcategory found for shared subcategory, falling back to name/flag search.'); // DEBUG
-      // If no real subcategory exists, look for products with matching names or flags
-      // For "visitor-chair", look for products with is_visitor_sofa flag or similar names
       const { data, error } = await supabase
         .from('products')
         .select(`
@@ -148,9 +168,7 @@ async function getProductsBySubcategorySlug(categorySlug: string, subcategorySlu
             name,
             slug
           )
-        `)
-        .or(`name.ilike.%${subcategory.name}%,description.ilike.%${subcategory.name}%,is_visitor_sofa.eq.true`)
-        .order('created_at', { ascending: false });
+        `) as { data: ProductData[] | null, error: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
       if (error) {
         console.error('getProductsBySubcategorySlug: Error fetching products for shared subcategory fallback:', error); // DEBUG
         throw error;
@@ -159,7 +177,6 @@ async function getProductsBySubcategorySlug(categorySlug: string, subcategorySlu
     }
   } else {
     console.log('getProductsBySubcategorySlug: Handling as regular subcategory.'); // DEBUG
-    // For regular subcategories, get products that match both category and subcategory
     const { data, error } = await supabase
       .from('products')
       .select(`
@@ -174,10 +191,7 @@ async function getProductsBySubcategorySlug(categorySlug: string, subcategorySlu
           name,
           slug
         )
-      `)
-      .eq('category_id', category.id)
-      .eq('subcategory_id', subcategory.id)
-      .order('created_at', { ascending: false });
+      `) as { data: ProductData[] | null, error: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
     if (error) {
       console.error('getProductsBySubcategorySlug: Error fetching products for regular subcategory:', error); // DEBUG
       throw error;
@@ -222,7 +236,7 @@ export default async function SubcategoryPage({ params }: SubcategoryPageProps) 
             <div className="container mx-auto px-4">
               {products.length > 0 ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
-                  {products.map((product: any) => {
+                  {products.map((product: ProductData) => {
                     let discountPercentage = 0;
                     if (product.original_price && product.original_price > product.price) {
                       discountPercentage = Math.round(((product.original_price - product.price) / product.original_price) * 100);
@@ -234,8 +248,8 @@ export default async function SubcategoryPage({ params }: SubcategoryPageProps) 
                         id={product.id}
                         name={product.name}
                         price={product.price}
-                        originalPrice={product.original_price}
-                        category={product.categories?.name || product.category}
+                        originalPrice={product.original_price ?? undefined}
+                        category={product.categories?.name || product.category_id}
                         slug={product.slug} // Ensure slug is correctly passed
                         rating={product.rating || 4.5}
                         reviews={product.reviews || 0}
@@ -250,31 +264,31 @@ export default async function SubcategoryPage({ params }: SubcategoryPageProps) 
                 <div className="text-center py-16">
                   <div className="text-6xl mb-4">🪑</div>
                   <h3 className="text-2xl font-bold text-gray-800 mb-2">No Products Found</h3>
-                  <p className="text-gray-600 mb-6">We couldn't find products in this subcategory.</p>
-                  <a 
+                  <p className="text-gray-600 mb-6">We couldn&apos;t find products in this subcategory.</p>
+                  <Link 
                     href="/shop" // Changed to link to the main shop page
                     className="bg-amber-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-amber-700 transition-colors duration-200"
                   >
                     View All Products // Changed text
-                  </a>
+                  </Link>
                 </div>
               )}
 
               {/* View All Products and Return to Home buttons - always at the end if products are displayed */}
               {products.length > 0 && (
                 <div className="text-center mt-12 space-x-4">
-                  <a 
+                  <Link 
                     href="/shop" 
                     className="inline-block bg-amber-600 text-white px-8 py-4 rounded-full font-semibold text-lg hover:shadow-lg whitespace-nowrap"
                   >
                     View All Products
-                  </a>
-                  <a 
-                    href="/" 
+                  </Link>
+                  <Link 
+                    href="/"
                     className="inline-block border-2 border-amber-600 text-amber-600 px-8 py-4 rounded-full font-semibold text-lg hover:bg-amber-600 hover:text-white transition-colors duration-300 whitespace-nowrap"
                   >
                     Return to Home
-                  </a>
+                  </Link>
                 </div>
               )}
             </div>
@@ -283,20 +297,20 @@ export default async function SubcategoryPage({ params }: SubcategoryPageProps) 
         
       </div>
     );
-  } catch (e) {
+  } catch (e: unknown) {
     console.error('SubcategoryPage: Error rendering subcategory page:', e); // DEBUG
     notFound();
   }
 }
 
 export async function generateStaticParams() {
-  const { data: categories } = await supabase.from('categories').select('id, slug');
+  const { data: categories } = await supabase.from('categories').select('id, slug') as { data: CategoryData[] | null };
   if (!categories) return [];
-  const { data: subcategories } = await supabase.from('subcategories').select('id, slug, category_id');
+  const { data: subcategories } = await supabase.from('subcategories').select('id, slug, category_id') as { data: SubcategoryData[] | null };
   if (!subcategories) return [];
   const params: Array<{ slug: string; subslug: string }> = [];
   for (const cat of categories) {
-    for (const sub of subcategories.filter((s: any) => s.category_id === cat.id)) {
+    for (const sub of subcategories.filter((s: SubcategoryData) => s.category_id === cat.id)) {
       params.push({ slug: cat.slug, subslug: sub.slug });
     }
   }

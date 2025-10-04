@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import Image from 'next/image'; // Added import for Image
 
 interface ImageUploadProps {
   onImageUploaded: (url: string) => void;
@@ -58,7 +59,7 @@ export default function ImageUpload({ onImageUploaded, currentImages = [] }: Ima
       }
 
       // Upload file to Supabase Storage
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('product-images')
         .upload(filePath, file, {
           cacheControl: '3600',
@@ -131,14 +132,16 @@ export default function ImageUpload({ onImageUploaded, currentImages = [] }: Ima
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {currentImages.map((image, index) => (
               <div key={index} className="relative">
-                <img
+                <Image // Changed from <img> to <Image>
                   src={image}
                   alt={`Product ${index + 1}`}
+                  width={80} // Added width
+                  height={80} // Added height
                   className="w-full h-20 object-cover rounded-lg border"
                 />
                 <button
                   onClick={() => {
-                    const newImages = currentImages.filter((_, i) => i !== index);
+                    // const newImages = currentImages.filter((_, i) => i !== index); // Commented out unused variable
                     // You might want to add a callback to update the parent component
                   }}
                   className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"

@@ -1,9 +1,16 @@
 import { getAllProducts } from '@/lib/products';
 import ProductImageDebug from '@/components/ProductImageDebug';
 
+interface Product {
+  id: string;
+  images?: string[];
+  name: string;
+  // Add other properties that ProductImageDebug might use if necessary
+}
+
 export default async function ProductImageTestPage() {
   try {
-    const products = await getAllProducts();
+    const { products } = await getAllProducts(); // getAllProducts now returns an object with products and totalCount
     
     return (
       <div className="p-8 max-w-6xl mx-auto">
@@ -19,7 +26,7 @@ export default async function ProductImageTestPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {products?.slice(0, 12).map((product: any) => (
+          {products?.slice(0, 12).map((product: Product) => (
             <ProductImageDebug key={product.id} product={product} />
           ))}
         </div>
@@ -31,12 +38,12 @@ export default async function ProductImageTestPage() {
         )}
       </div>
     );
-  } catch (error) {
+  } catch (error: unknown) {
     return (
       <div className="p-8">
         <h1 className="text-2xl font-bold mb-4">Error</h1>
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          Error loading products: {error.message}
+          Error loading products: {error instanceof Error ? error.message : 'An unknown error occurred'}
         </div>
       </div>
     );

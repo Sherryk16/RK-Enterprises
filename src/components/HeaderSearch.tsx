@@ -113,7 +113,7 @@ const HeaderSearch = () => {
             <div className="p-4 text-center text-gray-500">Loading...</div>
           )}
           {!loading && searchResults.length === 0 && searchTerm.length > 2 && (
-            <div className="p-4 text-center text-gray-500">No products found for "{searchTerm}".</div>
+            <div className="p-4 text-center text-gray-500">No products found for &quot;{searchTerm}&quot;.</div>
           )}
           {!loading && searchResults.length > 0 && (
             <ul>

@@ -10,13 +10,29 @@ import { useCart } from '@/context/CartContext';
 import { useRouter } from 'next/navigation'; // Import useRouter
 import { simpleSlugify } from '@/lib/utils'; // Import simpleSlugify from utils
 
+interface NavSubcategory {
+  id: string;
+  name: string;
+  slug: string;
+  category_id?: string;
+}
+
+interface NavCategory {
+  id: string;
+  name: string;
+  slug: string;
+  subcategories?: NavSubcategory[];
+  category_subcategories?: { subcategory_id: NavSubcategory }[];
+}
+
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  const [navCategories, setNavCategories] = useState<any[]>([]);
+  const [navCategories, setNavCategories] = useState<NavCategory[]>([]);
   const { cartCount } = useCart();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter(); // Initialize useRouter
   // Removed local slugify as simpleSlugify is imported from utils
 
@@ -34,14 +50,19 @@ const Header = () => {
 
         if (isMounted) {
           // Display all categories fetched, no manual filtering needed
-          const allCategories = (categoriesData || []).map((category: any) => ({ ...category }));
+          const allCategories: NavCategory[] = (categoriesData || []).map((category: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
+            ...category,
+            category_subcategories: (category.category_subcategories || []).map((link: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
+              subcategory_id: link.subcategory_id as NavSubcategory
+            }))
+          }));
           
           console.log('All Categories for Header (before shared subcategories):', allCategories); // TEMP DEBUG LOG
 
           // Add shared subcategories to relevant categories
-          allCategories.forEach((category: any) => {
+          allCategories.forEach((category: NavCategory) => {
             const catSlug = category.slug || simpleSlugify(category.name || '');
-            const sharedSubs = sharedSubcategories.filter((sub: any) => 
+            const sharedSubs = sharedSubcategories.filter((sub: NavSubcategory & { categories: string[] }) => 
               sub.categories.includes(catSlug) || 
               sub.categories.includes(category.slug) ||
               (category.name && sub.categories.some((slug: string) => 
@@ -61,7 +82,7 @@ const Header = () => {
           setNavCategories(allCategories);
           console.log('Final Navigation Categories (with shared subcategories):', allCategories); // TEMP DEBUG LOG
         }
-      } catch (e) {
+      } catch (e: unknown) {
         console.error("Error fetching navigation categories:", e); // Add error logging
       }
     })();
@@ -216,7 +237,7 @@ const Header = () => {
         <div className="container mx-auto px-4">
           <div className="flex flex-col lg:flex-row items-center justify-between py-3 space-y-2 lg:space-y-0">
             <div className="flex items-center space-x-6">
-              {navCategories.map((category: any) => {
+              {navCategories.map((category: NavCategory) => {
                 const catSlug = category.slug || simpleSlugify(category.name || '');
                 return (
                 <div key={category.id} className="relative group">
@@ -235,7 +256,7 @@ const Header = () => {
                   {Array.isArray(category.category_subcategories) && category.category_subcategories.length > 0 && (
                   <div className="absolute top-full left-0 w-64 bg-white shadow-lg border border-gray-200 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50">
                     <div className="py-2">
-                        {category.category_subcategories.map((link: any) => {
+                        {category.category_subcategories.map((link: { subcategory_id: NavSubcategory }) => {
                           const sub = link.subcategory_id; // Access the nested subcategory_id object
                           const subSlug = sub.slug || simpleSlugify(sub.name || '');
                           return (
@@ -285,7 +306,7 @@ const Header = () => {
               <div className="border-t pt-4">
                 <h3 className="font-semibold text-gray-800 mb-3">Categories</h3>
                 <div className="space-y-3">
-                  {navCategories.map((category: any) => {
+                  {navCategories.map((category: NavCategory) => {
                     const catSlug = category.slug || simpleSlugify(category.name || '');
                     return (
                     <div key={category.id} className="space-y-2">
@@ -297,7 +318,7 @@ const Header = () => {
                       </Link>
                       {Array.isArray(category.category_subcategories) && category.category_subcategories.length > 0 && (
                       <div className="pl-4 space-y-1">
-                          {category.category_subcategories.map((link: any) => {
+                          {category.category_subcategories.map((link: { subcategory_id: NavSubcategory }) => {
                             const sub = link.subcategory_id; // Access the nested subcategory_id object
                             const subSlug = sub.slug || simpleSlugify(sub.name || '');
                             return (

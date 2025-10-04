@@ -532,9 +532,15 @@ export async function debugDatabaseContents() {
         })) || []
       }
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Debug error:', error);
-    return { error: error.message };
+    let errorMessage = 'Unknown error';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    return { error: errorMessage };
   }
 }
 

@@ -6,7 +6,12 @@ import { useState, useEffect } from 'react';
 
 const HeroSection = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const images = ['/hero.png', '/hero1.png', '/hero2.png', '/hero3.png'];
+  const images = [
+    { src: '/hero.png', alt: 'Modern office chairs and tables' },
+    { src: '/hero1.png', alt: 'Stylish dining room furniture set' },
+    { src: '/hero2.png', alt: 'Ergonomic study chairs and desks' },
+    { src: '/hero3.png', alt: 'Comfortable visitor sofas and benches' },
+  ];
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -74,10 +79,11 @@ const HeroSection = () => {
             <div className="aspect-square w-64 md:w-80 lg:w-96 xl:w-[28rem] mx-auto rounded-xl overflow-hidden">
               <Image
                 key={currentImageIndex}
-                src={images[currentImageIndex]}
-                alt="Premium Furniture"
+                src={images[currentImageIndex].src}
+                alt={images[currentImageIndex].alt}
                 width={448}
                 height={448}
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 className="w-full h-full object-contain rounded-xl transition-opacity duration-500"
                 priority={currentImageIndex === 0}
               />

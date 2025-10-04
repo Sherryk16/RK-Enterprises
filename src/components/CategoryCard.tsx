@@ -6,11 +6,11 @@ interface CategoryCardProps {
   description: string;
   image: string;
   href: string;
-  itemCount: number;
-  icon: string;
+  itemCount?: number; // Made optional as it's not used directly in rendering
+  icon?: string; // Made optional as it's not used directly in rendering
 }
 
-const CategoryCard = ({ title, description, image, href, itemCount, icon }: CategoryCardProps) => {
+const CategoryCard = ({ title, description, image, href }: CategoryCardProps) => {
   return (
     <Link href={href} className="group">
       <div className="bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 h-full flex flex-col">
@@ -21,6 +21,7 @@ const CategoryCard = ({ title, description, image, href, itemCount, icon }: Cate
             src={image}
             alt={title}
             fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
           

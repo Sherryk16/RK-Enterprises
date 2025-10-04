@@ -29,13 +29,13 @@ export default function TermsPage() {
 
               <h2 className="text-2xl font-bold text-gray-800 mb-4">Use License</h2>
               <p className="text-gray-600 mb-6">
-                Permission is granted to temporarily download one copy of the materials on RK Enterprises Hub's 
+                Permission is granted to temporarily download one copy of the materials on RK Enterprises Hub&apos;s 
                 website for personal, non-commercial transitory viewing only.
               </p>
 
               <h2 className="text-2xl font-bold text-gray-800 mb-4">Disclaimer</h2>
               <p className="text-gray-600 mb-6">
-                The materials on RK Enterprises Hub's website are provided on an 'as is' basis. 
+                The materials on RK Enterprises Hub&apos;s website are provided on an &apos;as is&apos; basis. 
                 RK Enterprises Hub makes no warranties, expressed or implied, and hereby disclaims 
                 and negates all other warranties.
               </p>
@@ -44,7 +44,7 @@ export default function TermsPage() {
               <p className="text-gray-600 mb-6">
                 In no event shall RK Enterprises Hub or its suppliers be liable for any damages 
                 (including, without limitation, damages for loss of data or profit, or due to business interruption) 
-                arising out of the use or inability to use the materials on RK Enterprises Hub's website.
+                arising out of the use or inability to use the materials on RK Enterprises Hub&apos;s website.
               </p>
 
               <h2 className="text-2xl font-bold text-gray-800 mb-4">Revisions</h2>

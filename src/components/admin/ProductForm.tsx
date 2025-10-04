@@ -1,11 +1,77 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { upsertProduct, getCategoriesWithSubcategories } from '@/lib/products';
 import SimpleImageUpload from './SimpleImageUpload';
 
-export default function ProductForm({ product, onClose }: { product: any; onClose: () => void }) {
-  const [formData, setFormData] = useState({
+interface ProductFormData {
+  name: string;
+  slug: string;
+  price: string;
+  original_price: string;
+  category_id: string;
+  subcategory_id: string;
+  description: string;
+  detailed_description: string;
+  colors: string[];
+  images: string[];
+  is_featured: boolean;
+  show_in_office: boolean;
+  is_molded: boolean;
+  is_ceo_chair: boolean;
+  is_gaming_chair: boolean;
+  is_dining_chair: boolean;
+  is_visitor_sofa: boolean;
+  is_study_chair: boolean;
+  is_outdoor_furniture: boolean;
+  is_folding_furniture: boolean;
+}
+
+interface CategoryData {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  category_subcategories?: { subcategory_id: SubcategoryData[] }[]; // Nested structure from Supabase
+}
+
+interface SubcategoryData {
+  id: string;
+  name: string;
+  slug: string;
+  category_id?: string;
+}
+
+interface TransformedCategoryData extends CategoryData {
+  subcategories: SubcategoryData[]; // Flattened structure for client-side use
+}
+
+interface ProductProps {
+  id?: string;
+  name?: string;
+  slug?: string;
+  price?: string | number;
+  original_price?: string | number | null;
+  category_id?: string;
+  subcategory_id?: string | null;
+  description?: string;
+  detailed_description?: string;
+  colors?: string[];
+  images?: string[];
+  is_featured?: boolean;
+  show_in_office?: boolean;
+  is_molded?: boolean;
+  is_ceo_chair?: boolean;
+  is_gaming_chair?: boolean;
+  is_dining_chair?: boolean;
+  is_visitor_sofa?: boolean;
+  is_study_chair?: boolean;
+  is_outdoor_furniture?: boolean;
+  is_folding_furniture?: boolean;
+}
+
+export default function ProductForm({ product, onClose }: { product: ProductProps | null; onClose: () => void }) {
+  const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     slug: '',
     price: '',
@@ -28,20 +94,43 @@ export default function ProductForm({ product, onClose }: { product: any; onClos
     is_folding_furniture: false,
   });
 
-  const [categories, setCategories] = useState<any[]>([]);
-  const [subcategories, setSubcategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<TransformedCategoryData[]>([]);
+  const [subcategories, setSubcategories] = useState<SubcategoryData[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const data: CategoryData[] | null = await getCategoriesWithSubcategories();
+      const transformedCategories = (data || []).map((cat: CategoryData) => ({
+        ...cat,
+        subcategories: (cat.category_subcategories || []).flatMap((link: { subcategory_id: SubcategoryData[] }) => link.subcategory_id || [])
+      }));
+      setCategories(transformedCategories);
+
+      if (product && product.category_id) {
+        const selectedCat = transformedCategories.find((c) => c.id === product.category_id);
+        if (selectedCat) {
+          setSubcategories(selectedCat.subcategories || []);
+        }
+      }
+
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      setCategories([]);
+      setSubcategories([]);
+    }
+  }, [product]); // Add product to dependencies
 
   useEffect(() => {
     const loadCategoriesAndProduct = async () => {
-      await fetchCategories(); // Fetch categories first
+      await fetchCategories();
 
       if (product) {
         setFormData({
           name: product.name || '',
           slug: product.slug || '',
-          price: product.price || '',
-          original_price: product.original_price || '',
+          price: String(product.price || ''),
+          original_price: String(product.original_price || ''),
           category_id: product.category_id || '',
           subcategory_id: product.subcategory_id || '',
           description: product.description || '',
@@ -60,47 +149,21 @@ export default function ProductForm({ product, onClose }: { product: any; onClos
           is_folding_furniture: product.is_folding_furniture || false,
         });
 
-        // If product has a category_id, load its subcategories
         if (product.category_id) {
           const allCats = await getCategoriesWithSubcategories();
-          const selectedCategory = (allCats || []).find((c: any) => c.id === product.category_id);
+          const selectedCategory = (allCats || []).find((c: CategoryData) => c.id === product.category_id);
           if (selectedCategory && selectedCategory.category_subcategories) {
-            const flatSubcategories = selectedCategory.category_subcategories.map((link: any) => link.subcategory_id);
+            const flatSubcategories = selectedCategory.category_subcategories.flatMap((link: { subcategory_id: SubcategoryData[] }) => link.subcategory_id || []);
             setSubcategories(flatSubcategories);
           }
         }
       }
     };
     loadCategoriesAndProduct();
-  }, [product]);
+  }, [product, fetchCategories]); // Add fetchCategories to useEffect dependencies
 
-  const fetchCategories = async () => {
-    try {
-      const data = await getCategoriesWithSubcategories();
-      // Transform data: flatten category_subcategories to an array of subcategory objects
-      const transformedCategories = (data || []).map((cat: any) => ({
-        ...cat,
-        subcategories: (cat.category_subcategories || []).map((link: any) => link.subcategory_id)
-      }));
-      setCategories(transformedCategories);
-
-      // If editing a product and categories are fetched, ensure correct subcategories are loaded
-      if (product && product.category_id) {
-        const selectedCat = transformedCategories.find((c: any) => c.id === product.category_id);
-        if (selectedCat) {
-          setSubcategories(selectedCat.subcategories || []);
-        }
-      }
-
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      setCategories([]);
-      setSubcategories([]);
-    }
-  };
-
-  const handleCategoryChange = async (categoryId: string) => {
-    const category = categories.find((c: any) => c.id === categoryId);
+  const handleCategoryChange = (categoryId: string) => {
+    const category = categories.find((c) => c.id === categoryId);
     if (category) {
       setSubcategories(category.subcategories || []);
     } else {
@@ -109,17 +172,15 @@ export default function ProductForm({ product, onClose }: { product: any; onClos
     setFormData(prev => ({ ...prev, category_id: categoryId, subcategory_id: '' }));
   };
 
-  // Auto-generate slug from name
   const generateSlug = (name: string) => {
     const baseSlug = name
       .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
-      .replace(/\s+/g, '-') // Replace spaces with hyphens
-      .replace(/-+/g, '-') // Replace multiple hyphens with single
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
       .trim();
     
-    // Add timestamp to make it unique
-    const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
+    const timestamp = Date.now().toString().slice(-6);
     return `${baseSlug}-${timestamp}`;
   };
 
@@ -131,16 +192,22 @@ export default function ProductForm({ product, onClose }: { product: any; onClos
       await upsertProduct({
         ...formData,
         id: product?.id,
-        slug: generateSlug(formData.name), // Auto-generate slug
+        slug: generateSlug(formData.name),
         price: parseFloat(formData.price),
-        original_price: formData.original_price ? parseFloat(formData.original_price) : null,
+        original_price: formData.original_price ? parseFloat(formData.original_price) : undefined,
         colors: formData.colors.filter(color => color.trim() !== ''),
         images: formData.images.filter(img => img.trim() !== ''),
       });
       onClose();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error saving product:', error);
-      alert(`Error saving product: ${error.message || error}`);
+      let errorMessage = 'Error saving product';
+      if (error instanceof Error) {
+        errorMessage = `Error saving product: ${error.message}`;
+      } else if (typeof error === 'string') {
+        errorMessage = `Error saving product: ${error}`;
+      }
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -256,7 +323,7 @@ export default function ProductForm({ product, onClose }: { product: any; onClos
                   required
                 >
                   <option value="">Select Category</option>
-                  {categories.map((category: any) => (
+                  {categories.map((category: TransformedCategoryData) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
                     </option>
@@ -270,10 +337,10 @@ export default function ProductForm({ product, onClose }: { product: any; onClos
                   value={formData.subcategory_id}
                   onChange={(e) => setFormData(prev => ({ ...prev, subcategory_id: e.target.value }))}
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                  disabled={!formData.category_id || subcategories.length === 0} // Disable if no category selected or no subcategories
+                  disabled={!formData.category_id || subcategories.length === 0}
                 >
                   <option value="">Select Subcategory</option>
-                  {subcategories.map((subcategory: any) => (
+                  {subcategories.map((subcategory: SubcategoryData) => (
                     <option key={subcategory.id} value={subcategory.id}>
                       {subcategory.name}
                     </option>

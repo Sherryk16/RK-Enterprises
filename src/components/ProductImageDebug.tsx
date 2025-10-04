@@ -3,8 +3,14 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 
+interface Product {
+  id: string;
+  name: string;
+  images?: string[];
+}
+
 interface ProductImageDebugProps {
-  product: any;
+  product: Product;
 }
 
 export default function ProductImageDebug({ product }: ProductImageDebugProps) {
@@ -22,9 +28,9 @@ export default function ProductImageDebug({ product }: ProductImageDebugProps) {
     setImageStatus('success');
   };
 
-  const handleImageError = (e: any) => {
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     setImageStatus('error');
-    setErrorMessage(e.target.src);
+    setErrorMessage(e.currentTarget.src);
   };
 
   return (

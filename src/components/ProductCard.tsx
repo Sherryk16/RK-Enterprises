@@ -13,8 +13,8 @@ interface ProductCardProps {
   image: string;
   category: string;
   slug: string;
-  rating: number;
-  reviews: number;
+  rating?: number; // Made optional as it's not used directly in rendering
+  reviews?: number; // Made optional as it's not used directly in rendering
   isNew?: boolean;
   discount?: number;
 }
@@ -27,8 +27,6 @@ const ProductCard = ({
   image,
   category,
   slug,
-  rating,
-  reviews,
   isNew = false,
   discount = 0
 }: ProductCardProps) => {
@@ -70,13 +68,8 @@ const ProductCard = ({
               src={image}
               alt={name}
               fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
               className="object-contain rounded-t-2xl"
-              unoptimized // Add unoptimized prop for external images
-              onError={(e) => {
-                console.error('Image failed to load:', image);
-                e.currentTarget.src = '/placeholder-product.jpg'; // Set to placeholder on error
-                e.currentTarget.style.display = 'block'; // Ensure it's visible if it was hidden
-              }}
             />
           ) : (
             /* Product Image Placeholder */

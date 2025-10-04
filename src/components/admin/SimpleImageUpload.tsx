@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import Image from 'next/image';
 
 interface SimpleImageUploadProps {
   onImageUploaded: (url: string) => void;
@@ -100,9 +101,11 @@ export default function SimpleImageUpload({ onImageUploaded, currentImages = [] 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {currentImages.map((image, index) => (
               <div key={index} className="relative">
-                <img
+                <Image
                   src={image}
                   alt={`Product ${index + 1}`}
+                  width={80} // Added width
+                  height={80} // Added height
                   className="w-full h-20 object-cover rounded-lg border"
                 />
               </div>

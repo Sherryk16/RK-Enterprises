@@ -3,10 +3,33 @@ import { getAllOrders } from '@/lib/orders';
 import { format } from 'date-fns';
 import Image from 'next/image'; // Import Image component
 
+interface OrderItem {
+  id: string;
+  product_id: string;
+  product_name: string;
+  product_image: string;
+  quantity: number;
+  price_at_purchase: number;
+}
+
+interface Order {
+  id: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  shipping_address: string;
+  city: string;
+  zip_code: string;
+  created_at: string;
+  total_amount: number;
+  status: 'pending' | 'completed' | 'cancelled'; // Assuming these are the possible statuses
+  items: OrderItem[];
+}
+
 export const dynamic = 'force-dynamic';
 
 export default async function AdminOrdersPage() {
-  let orders = [];
+  let orders: Order[] = [];
 
   try {
     orders = await getAllOrders();
@@ -34,7 +57,7 @@ export default async function AdminOrdersPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {orders.map((order: any) => (
+              {orders.map((order: Order) => (
                 <tr key={order.id}>
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">{order.id}</td>
                   <td className="px-6 py-4 text-sm text-gray-600">
@@ -52,7 +75,7 @@ export default async function AdminOrdersPage() {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
                     <ul className="list-disc list-inside space-y-2">
-                      {order.items.map((item: any) => (
+                      {order.items.map((item: OrderItem) => (
                         <li key={item.id} className="flex items-center space-x-2">
                           <Image 
                             src={item.product_image || "/placeholder-product.jpg"}

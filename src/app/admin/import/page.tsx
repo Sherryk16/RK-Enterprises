@@ -44,9 +44,15 @@ export default function ImportProductsPage() {
         setMessage(data.error || 'Failed to import products.');
         setIsError(true);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error uploading CSV:', error);
-      setMessage('An unexpected error occurred: ' + error.message);
+      let errorMessage = 'An unexpected error occurred.';
+      if (error instanceof Error) {
+        errorMessage = 'An unexpected error occurred: ' + error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = 'An unexpected error occurred: ' + error;
+      }
+      setMessage(errorMessage);
       setIsError(true);
     }
   };

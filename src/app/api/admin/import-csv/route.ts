@@ -1,12 +1,48 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import slugify from 'slugify';
+// Removed import slugify from 'slugify';
 import csv from 'csv-parser';
 import { Readable } from 'stream'; // Import Readable from 'stream'
 import { cleanHtml, simpleSlugify, normalizeCategoryName } from '@/lib/utils'; // Import utility functions
+import fetch from 'node-fetch'; // Import node-fetch for server-side fetching
+import { Buffer } from 'buffer'; // Import Buffer
+
+interface CSVRow {
+  'Name': string;
+  'Categories': string;
+  'Description': string;
+  'Regular price': string;
+  'Sale price': string;
+  'Images': string;
+  'Is featured?': string;
+  // Add other expected CSV headers here
+}
+
+interface ProductToInsert {
+  name: string;
+  slug: string;
+  price: number;
+  original_price?: number | null;
+  images: string[];
+  description: string;
+  detailed_description: string;
+  is_featured: boolean;
+  show_in_office: boolean;
+  category_id: string;
+  subcategory_id?: string | null;
+  is_molded: boolean;
+  is_ceo_chair: boolean;
+  is_gaming_chair: boolean;
+  is_dining_chair: boolean;
+  is_visitor_sofa: boolean;
+  is_study_chair: boolean;
+  is_outdoor_furniture: boolean;
+  is_folding_furniture: boolean;
+}
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Use service role key for server-side
+const SUPABASE_BUCKET_NAME = 'product-images'; // Define your Supabase bucket name here
 
 console.log('Supabase URL (from env): ', supabaseUrl ? 'Loaded' : 'NOT LOADED', supabaseUrl);
 console.log('Supabase Service Role Key (from env): ', supabaseServiceRoleKey ? 'Loaded' : 'NOT LOADED', 'Length:', supabaseServiceRoleKey?.length);
@@ -22,7 +58,7 @@ if (!supabaseServiceRoleKey) {
 
 // Initialize Supabase client for server-side operations with the Service Role Key
 // This key bypasses Row Level Security and has full privileges.
-const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+const supabase = createClient(supabaseUrl!, supabaseServiceRoleKey!, {
   auth: { persistSession: false }, // No session persistence needed for a service role key
 });
 
@@ -32,7 +68,7 @@ async function getOrCreateCategory(name: string) {
   console.log(`getOrCreateCategory: Processing category name: '${name}', Normalized: '${cleanedName}'`); // DEBUG LOG
   if (!cleanedName) return null; // Skip if name is empty after cleaning
   const slug = simpleSlugify(cleanedName);
-  let { data: category, error } = await supabase.from('categories').select('*').eq('slug', slug).single();
+  const { data: category, error } = await supabase.from('categories').select('*').eq('slug', slug).single();
 
   if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
     console.error(`Error fetching category ${cleanedName}:`, error);
@@ -56,7 +92,7 @@ async function getOrCreateSubcategory(name: string, categoryId: string) {
   console.log(`getOrCreateSubcategory: Processing subcategory name: '${name}', Normalized: '${cleanedName}'`); // DEBUG LOG
   if (!cleanedName) return null; // Skip if name is empty after cleaning
   const slug = simpleSlugify(cleanedName);
-  let { data: subcategory, error } = await supabase.from('subcategories').select('*').eq('slug', slug).single();
+  const { data: subcategory, error } = await supabase.from('subcategories').select('*').eq('slug', slug).single();
 
   if (error && error.code !== 'PGRST116') {
     console.error(`Error fetching subcategory ${cleanedName}:`, error);
@@ -72,6 +108,52 @@ async function getOrCreateSubcategory(name: string, categoryId: string) {
     return newSubcategory;
   }
   return subcategory;
+}
+
+async function uploadImageToSupabase(imageUrl: string, productName: string): Promise<string | null> {
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      console.warn(`Failed to download image from URL: ${imageUrl} for product: ${productName}. Status: ${response.status}`);
+      return null; // Return null if download fails
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Determine file extension from URL or content type
+    const contentType = response.headers.get('content-type');
+    let fileExt = '.jpg'; // Default to jpg
+    if (contentType) {
+      if (contentType.includes('png')) fileExt = '.png';
+      else if (contentType.includes('jpeg')) fileExt = '.jpeg';
+      else if (contentType.includes('gif')) fileExt = '.gif';
+      else if (contentType.includes('webp')) fileExt = '.webp';
+    }
+    
+    // Create a unique filename
+    const fileName = `${simpleSlugify(productName)}-${Date.now()}${fileExt}`;
+    const filePath = `products/${fileName}`;
+
+    const { data, error } = await supabase.storage
+      .from(SUPABASE_BUCKET_NAME)
+      .upload(filePath, buffer, {
+        contentType: contentType || 'application/octet-stream',
+        upsert: false, // Prevents overwriting existing files with the same name
+      });
+
+    if (error) {
+      console.error(`Error uploading image to Supabase Storage for product: ${productName}, URL: ${imageUrl}`, error);
+      return null; // Return null if upload fails
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from(SUPABASE_BUCKET_NAME).getPublicUrl(filePath);
+    console.log(`Successfully uploaded image for product: ${productName}. Public URL: ${publicUrl}`);
+    return publicUrl;
+  } catch (error) {
+    console.error(`Caught error in uploadImageToSupabase for product: ${productName}, URL: ${imageUrl}`, error);
+    return null;
+  }
 }
 
 // Helper to link category and subcategory
@@ -100,8 +182,11 @@ async function linkCategoryToSubcategory(categoryId: string, subcategoryId: stri
 }
 
 export async function POST(request: Request) {
+  // For this API route, the request object might not be directly used, but it's required by Next.js.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   try {
     // Diagnostic query to check table visibility
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { data: diagData, error: diagError } = await supabase.from('category_subcategories').select('category_id').limit(1);
     if (diagError) {
       console.error('Diagnostic query error for category_subcategories:', diagError);
@@ -117,11 +202,11 @@ export async function POST(request: Request) {
     }
 
     const fileContent = await file.text();
-    const results: any[] = await new Promise((resolve, reject) => {
-      const products: any[] = [];
+    const results: CSVRow[] = await new Promise((resolve, reject) => {
+      const products: CSVRow[] = [];
       Readable.from(fileContent)
         .pipe(csv())
-        .on('data', (data) => products.push(data))
+        .on('data', (data: CSVRow) => products.push(data))
         .on('end', () => resolve(products))
         .on('error', (error) => reject(error));
     });
@@ -130,7 +215,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Empty or unparseable CSV file.' }, { status: 400 });
     }
 
-    const productsToInsert: any[] = [];
+    const productsToInsert: ProductToInsert[] = [];
     const processedSlugs = new Set<string>(); // Keep track of slugs in the current batch
 
     for (const row of results) {
@@ -164,10 +249,25 @@ export async function POST(request: Request) {
         continue;
       }
 
-      // Validate Images: Ensure at least one image URL is present
-      const images = row['Images'] ? row['Images'].split(',').map((img: string) => img.trim()).filter((img: string) => img) : [];
-      if (images.length === 0) {
-        console.warn(`Skipping row due to missing or invalid image URLs for product '${productName}' in row:`, row);
+      // Download and upload images to Supabase Storage
+      const originalImageUrls = row['Images'] ? row['Images'].split(',').map((img) => img.trim()).filter((img) => img) : [];
+      const uploadedImageUrls: string[] = [];
+
+      for (const imageUrl of originalImageUrls) {
+        if (imageUrl) {
+          const uploadedUrl = await uploadImageToSupabase(imageUrl, productName);
+          if (uploadedUrl) {
+            uploadedImageUrls.push(uploadedUrl);
+          } else {
+            console.warn(`Could not upload image from URL: ${imageUrl}. Using placeholder for product: ${productName}`);
+            // Optionally, add a placeholder image if the upload fails for a specific image
+            // uploadedImageUrls.push("/placeholder-product.jpg"); 
+          }
+        }
+      }
+
+      if (uploadedImageUrls.length === 0) {
+        console.warn(`Skipping row due to no valid image URLs after upload attempt for product '${productName}' in row:`, row);
         continue;
       }
 
@@ -205,7 +305,7 @@ export async function POST(request: Request) {
           continue; // Skip inserting this product if no primary category could be determined
       }
 
-      let baseSlug = simpleSlugify(productName || `product-${Math.random().toString(36).substring(7)}`);
+      const baseSlug = simpleSlugify(productName || `product-${Math.random().toString(36).substring(7)}`);
       let productSlug = baseSlug;
       let suffix = 1;
 
@@ -231,14 +331,14 @@ export async function POST(request: Request) {
       processedSlugs.add(productSlug); // Add the final unique slug to our set
 
       // Prepare product data for insertion
-      const product_data = {
+      const product_data: ProductToInsert = {
           name: productName,
           slug: productSlug,
-          price: row['Sale price'] ? parseFloat(row['Sale price']) : parseFloat(row['Regular price']) || 0, // CSV Sale price -> Supabase price (current/discounted)
-          original_price: parseFloat(row['Regular price']) || 0, // CSV Regular price -> Supabase original_price (full/old price)
-          images: row['Images'] ? row['Images'].split(',').map((img: string) => img.trim()).filter((img: string) => img) : [],
-          description: cleanedDescription, // Use the cleaned description
-          detailed_description: cleanedDescription, // Use the cleaned description
+          price: row['Sale price'] ? parseFloat(row['Sale price']) : parseFloat(row['Regular price']) || 0,
+          original_price: parseFloat(row['Regular price']) || 0,
+          images: uploadedImageUrls,
+          description: cleanedDescription,
+          detailed_description: cleanedDescription,
           is_featured: row['Is featured?'] === '1',
           show_in_office: ((categoriesStr || '').toLowerCase().includes('office furniture') || (categoriesStr || '').toLowerCase().includes('visitor chair')),
           category_id: primaryCategoryId,
@@ -251,8 +351,6 @@ export async function POST(request: Request) {
           is_study_chair: false,
           is_outdoor_furniture: false,
           is_folding_furniture: false,
-          // 'created_at' and 'updated_at' rely on Supabase defaults
-          // 'colors' field is present in JSON but no direct mapping from CSV in provided header. Omitted for now.
       };
 
       console.log('Product Data before Supabase insertion:', product_data); // FINAL DEBUG LOG
@@ -270,9 +368,15 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ message: `Successfully imported ${productsToInsert.length} products.` });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error processing CSV upload:', error);
-    return NextResponse.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
+    let errorMessage = 'Internal Server Error';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
