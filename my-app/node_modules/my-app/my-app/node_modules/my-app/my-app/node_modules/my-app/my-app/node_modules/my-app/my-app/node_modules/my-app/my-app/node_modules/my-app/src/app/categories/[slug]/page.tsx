@@ -29,11 +29,17 @@ interface ProductData {
 }
 
 interface CategoryPageProps {
-  params: { slug: string };
+  params?: Promise<{ slug: string }>;
 }
 
-export default async function CategoryPage({ params }: CategoryPageProps) {
-  const { slug } = params;
+export default async function CategoryPage({ params: rawParams }: CategoryPageProps) {
+  // Assert rawParams to be a plain object, as it is in Server Components
+  const params = await (rawParams as Promise<{ slug: string }>);
+  const { slug } = params || {};
+
+  if (!slug) {
+    notFound();
+  }
 
   console.log('=== DEBUG CATEGORY PAGE ===');
   console.log('Slug received by CategoryPage:', slug);
@@ -44,8 +50,8 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
     // Try normal slug lookup first
     [category, products] = await Promise.all([
-      getCategoryBySlug(slug),
-      getProductsByCategory(slug)
+      getCategoryBySlug(slug!),
+      getProductsByCategory(slug!)
     ]);
 
     console.log('=== DEBUG CATEGORY PAGE ===');
@@ -308,4 +314,24 @@ export async function generateStaticParams() {
   } catch (e) { // eslint-disable-line @typescript-eslint/no-unused-vars
     return [];
   }
+}
+
+export async function generateMetadata({ params: rawParams }: CategoryPageProps) {
+  // Await params here too
+  const params = await (rawParams as Promise<{ slug: string }>);
+  const { slug } = params;
+  
+  const category = await getCategoryBySlug(slug);
+  
+  if (!category) {
+    return {
+      title: 'Category Not Found',
+      description: 'The requested category was not found.',
+    };
+  }
+
+  return {
+    title: category.name,
+    description: category.description || `Browse ${category.name} products.`,
+  };
 }
