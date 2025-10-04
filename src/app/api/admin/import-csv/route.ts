@@ -4,8 +4,6 @@ import { createClient } from '@supabase/supabase-js';
 import csv from 'csv-parser';
 import { Readable } from 'stream'; // Import Readable from 'stream'
 import { cleanHtml, simpleSlugify, normalizeCategoryName } from '@/lib/utils'; // Import utility functions
-import fetch from 'node-fetch'; // Import node-fetch for server-side fetching
-import { Buffer } from 'buffer'; // Import Buffer
 
 interface CSVRow {
   'Name': string;
@@ -135,6 +133,7 @@ async function uploadImageToSupabase(imageUrl: string, productName: string): Pro
     const fileName = `${simpleSlugify(productName)}-${Date.now()}${fileExt}`;
     const filePath = `products/${fileName}`;
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { data, error } = await supabase.storage
       .from(SUPABASE_BUCKET_NAME)
       .upload(filePath, buffer, {
@@ -182,12 +181,9 @@ async function linkCategoryToSubcategory(categoryId: string, subcategoryId: stri
 }
 
 export async function POST(request: Request) {
-  // For this API route, the request object might not be directly used, but it's required by Next.js.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   try {
     // Diagnostic query to check table visibility
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { data: diagData, error: diagError } = await supabase.from('category_subcategories').select('category_id').limit(1);
+    const { error: diagError } = await supabase.from('category_subcategories').select('category_id').limit(1);
     if (diagError) {
       console.error('Diagnostic query error for category_subcategories:', diagError);
       throw new Error(`Diagnostic table check failed: ${diagError.message}`);
