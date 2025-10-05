@@ -3,23 +3,10 @@ import Link from 'next/link';
 interface SEOContentProps {
   category?: string;
   relatedCategories?: string[];
-  productType?: string;
 }
 
-export default function SEOContent({ category, relatedCategories, productType }: SEOContentProps) {
-  const seoKeywords = [
-    'furniture Pakistan',
-    'imported furniture',
-    'premium furniture',
-    'office furniture',
-    'dining furniture',
-    'outdoor furniture',
-    'study chairs',
-    'executive chairs',
-    'visitor chairs',
-    'RK Enterprise'
-  ];
-
+export default function SEOContent({ category, relatedCategories }: SEOContentProps) {
+  
   const locationKeywords = [
     'furniture store Karachi',
     'furniture store Lahore',
@@ -50,7 +37,7 @@ export default function SEOContent({ category, relatedCategories, productType }:
           <div className="bg-white p-6 rounded-lg shadow-sm">
             <h3 className="text-lg font-semibold text-gray-800 mb-3">💰 Best Prices</h3>
             <p className="text-gray-600 text-sm">
-              As one of Pakistan's largest furniture importers, we offer unbeatable prices 
+              As one of Pakistan&apos;s largest furniture importers, we offer unbeatable prices 
               without compromising on quality. Compare our prices and see the difference.
             </p>
           </div>
@@ -113,7 +100,7 @@ export default function SEOContent({ category, relatedCategories, productType }:
             </div>
             <div>
               <h4 className="font-medium text-gray-800 mb-1">What is your return policy?</h4>
-              <p className="text-gray-600">We offer a 100% money-back guarantee. If you're not satisfied with your purchase, we'll make it right.</p>
+              <p className="text-gray-600">We offer a 100% money-back guarantee. If you&apos;re not satisfied with your purchase, we&apos;ll make it right.</p>
             </div>
             <div>
               <h4 className="font-medium text-gray-800 mb-1">How long does delivery take?</h4>
