@@ -6,10 +6,52 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { getAllCategories, getFeaturedProducts } from '@/lib/products';
 import DynamicCustomerReviewsWrapper from '@/components/DynamicCustomerReviewsWrapper'; // Import the new wrapper
+import SEOContent from '@/components/SEOContent'; // Import SEO content component
 
 export const metadata: Metadata = {
-  title: 'RK Enterprise - Premium Imported Furniture for Home & Office',
-  description: 'Discover RK Enterprise for the best quality imported furniture. Shop office chairs, dining sets, outdoor furniture, and more at unbeatable prices in Pakistan.',
+  title: 'RK Enterprise - #1 Premium Imported Furniture Store in Pakistan | Office & Home Furniture',
+  description: 'Shop Pakistan\'s largest collection of premium imported furniture at RK Enterprise. Office chairs, dining sets, outdoor furniture, study chairs & more. Free shipping nationwide. Best prices guaranteed!',
+  keywords: [
+    'furniture Pakistan',
+    'imported furniture',
+    'office furniture',
+    'dining furniture',
+    'outdoor furniture',
+    'study chairs',
+    'executive chairs',
+    'visitor chairs',
+    'RK Enterprise',
+    'furniture store Karachi',
+    'furniture store Lahore',
+    'furniture store Islamabad',
+    'premium furniture',
+    'furniture online shopping',
+    'furniture delivery Pakistan'
+  ],
+  openGraph: {
+    title: 'RK Enterprise - #1 Premium Imported Furniture Store in Pakistan',
+    description: 'Shop Pakistan\'s largest collection of premium imported furniture. Office chairs, dining sets, outdoor furniture & more. Free shipping nationwide!',
+    type: 'website',
+    locale: 'en_PK',
+    siteName: 'RK Enterprise',
+    images: [
+      {
+        url: '/sitelogo.png',
+        width: 1200,
+        height: 630,
+        alt: 'RK Enterprise - Premium Imported Furniture Store Pakistan',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'RK Enterprise - #1 Premium Imported Furniture Store in Pakistan',
+    description: 'Shop Pakistan\'s largest collection of premium imported furniture. Office chairs, dining sets, outdoor furniture & more. Free shipping nationwide!',
+    images: ['/sitelogo.png'],
+  },
+  alternates: {
+    canonical: 'https://rkenterprise.com',
+  },
 };
 
 interface Category {
@@ -44,6 +86,35 @@ export default async function Home() {
   let displayCategories: Category[] = []; // Declare with let and initialize
   let displayProducts: Product[] = [];   // Declare with let and initialize
 
+  // Structured data for homepage
+  const homepageStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "RK Enterprise",
+    "description": "Pakistan's leading premium imported furniture store offering office chairs, dining sets, outdoor furniture, and more with nationwide delivery.",
+    "url": "https://rkenterprise.com",
+    "logo": "https://rkenterprise.com/sitelogo.png",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": "https://rkenterprise.com/shop?search={search_term_string}",
+      "query-input": "required name=search_term_string"
+    },
+    "sameAs": [
+      "https://www.facebook.com/rkenterprise",
+      "https://www.instagram.com/rkenterprise",
+      "https://twitter.com/rkenterprise"
+    ],
+    "offers": {
+      "@type": "AggregateOffer",
+      "priceCurrency": "PKR",
+      "lowPrice": "5000",
+      "highPrice": "50000",
+      "offerCount": "1000+",
+      "itemCondition": "https://schema.org/NewCondition",
+      "availability": "https://schema.org/InStock"
+    }
+  };
+
   try {
     const [categoriesData, productsData] = await Promise.all([
       getAllCategories(),
@@ -71,19 +142,26 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen bg-white">
-      
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(homepageStructuredData),
+        }}
+      />
       <main>
         <HeroSection />
         
         {/* Categories Section */}
-               <section className="py-8 sm:py-16 bg-gray-50">
+        <section className="py-8 sm:py-16 bg-gray-50" aria-labelledby="collections-heading">
           <div className="container mx-auto px-4">
-            <div className="text-center mb-6 sm:mb-12">
-              <h2 className="text-2xl sm:text-4xl font-bold text-gray-800 mb-2 sm:mb-4">Our Collections</h2>
+            <header className="text-center mb-6 sm:mb-12">
+              <h2 id="collections-heading" className="text-2xl sm:text-4xl font-bold text-gray-800 mb-2 sm:mb-4">
+                Our Premium Furniture Collections
+              </h2>
               <p className="text-sm sm:text-xl text-gray-600 max-w-3xl mx-auto">
-                Discover our wide range of premium furniture collections designed to meet all your seating and furnishing needs
+                Discover our comprehensive range of premium imported furniture collections designed to meet all your home and office furnishing needs across Pakistan
               </p>
-            </div>
+            </header>
             
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
               {displayCategories.map((category: Category) => {
@@ -150,14 +228,16 @@ export default async function Home() {
         </section>
 
         {/* Featured Products Section */}
-        <section className="py-16">
+        <section className="py-16" aria-labelledby="featured-products-heading">
           <div className="container mx-auto px-4">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold text-gray-800 mb-4">Featured Products</h2>
+            <header className="text-center mb-12">
+              <h2 id="featured-products-heading" className="text-4xl font-bold text-gray-800 mb-4">
+                Featured Premium Furniture Products
+              </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Top quality furniture at unbeatable prices. Huge variety and stock available, ready to ship.
+                Discover our top-quality imported furniture at unbeatable prices. Extensive variety with immediate stock availability, ready for nationwide delivery across Pakistan.
               </p>
-            </div>
+            </header>
             
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
               {displayProducts.map((product: Product) => {
@@ -232,6 +312,12 @@ export default async function Home() {
 
         {/* Customer Reviews Section */}
         <DynamicCustomerReviewsWrapper />
+
+        {/* SEO Content Section */}
+        <SEOContent 
+          category="Premium Furniture"
+          relatedCategories={['Office Furniture', 'Dining Furniture', 'Outdoor Furniture', 'Study Chairs']}
+        />
       </main>
       
     </div>

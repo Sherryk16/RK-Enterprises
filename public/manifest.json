@@ -1,0 +1,27 @@
+{
+  "name": "RK Enterprise - Premium Imported Furniture",
+  "short_name": "RK Enterprise",
+  "description": "Your one-stop shop for quality imported furniture. Shop office chairs, dining sets, outdoor furniture, and more at unbeatable prices in Pakistan.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f59e0b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/sitelogo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/sitelogo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["shopping", "business", "lifestyle"],
+  "lang": "en",
+  "dir": "ltr"
+}

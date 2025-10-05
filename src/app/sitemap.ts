@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 import { getAllProducts, getAllCategories } from '@/lib/products';
 
-const BASE_URL = 'https://www.rkenterprises.com'; // Replace with your actual domain
+const BASE_URL = 'https://rkenterprise.com'; // Updated to match your domain
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { products } = await getAllProducts();
@@ -22,12 +22,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const staticRoutes = [
-    { url: `${BASE_URL}/`, lastModified: new Date().toISOString(), changeFrequency: 'yearly' as const, priority: 1.0 },
-    { url: `${BASE_URL}/shop`, lastModified: new Date().toISOString(), changeFrequency: 'monthly' as const, priority: 0.9 },
-    { url: `${BASE_URL}/about`, lastModified: new Date().toISOString(), changeFrequency: 'monthly' as const, priority: 0.5 },
-    { url: `${BASE_URL}/contact`, lastModified: new Date().toISOString(), changeFrequency: 'monthly' as const, priority: 0.5 },
+    { url: `${BASE_URL}/`, lastModified: new Date().toISOString(), changeFrequency: 'daily' as const, priority: 1.0 },
+    { url: `${BASE_URL}/shop`, lastModified: new Date().toISOString(), changeFrequency: 'weekly' as const, priority: 0.9 },
+    { url: `${BASE_URL}/about`, lastModified: new Date().toISOString(), changeFrequency: 'monthly' as const, priority: 0.6 },
+    { url: `${BASE_URL}/contact`, lastModified: new Date().toISOString(), changeFrequency: 'monthly' as const, priority: 0.6 },
     { url: `${BASE_URL}/privacy`, lastModified: new Date().toISOString(), changeFrequency: 'yearly' as const, priority: 0.3 },
     { url: `${BASE_URL}/terms`, lastModified: new Date().toISOString(), changeFrequency: 'yearly' as const, priority: 0.3 },
+    { url: `${BASE_URL}/order-confirmation`, lastModified: new Date().toISOString(), changeFrequency: 'yearly' as const, priority: 0.2 },
   ];
 
   return [...staticRoutes, ...productRoutes, ...categoryRoutes];

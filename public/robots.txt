@@ -1,5 +1,27 @@
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /debug/
+Disallow: /image-debug/
+Disallow: /product-image-test/
+Disallow: /test-office/
 
-Sitemap: https://www.rkenterprises.com/sitemap.xml
+# Allow important pages
+Allow: /products/
+Allow: /categories/
+Allow: /shop
+Allow: /about
+Allow: /contact
+
+# Crawl delay for better server performance
+Crawl-delay: 1
+
+# Sitemap location
+Sitemap: https://rkenterprise.com/sitemap.xml
+
+# Additional sitemaps
+Sitemap: https://rkenterprise.com/sitemap-products.xml
+Sitemap: https://rkenterprise.com/sitemap-categories.xml
+
 
