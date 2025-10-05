@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next';
 import { getAllProducts, getAllCategories } from '@/lib/products';
 
-const BASE_URL = 'https://rkenterprise.com'; // Updated to match your domain
+const BASE_URL = 'https://www.rkenterprises.com'; // Updated to match your domain
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const { products } = await getAllProducts();
