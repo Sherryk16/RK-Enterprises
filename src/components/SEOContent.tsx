@@ -125,3 +125,5 @@ export default function SEOContent({ category, relatedCategories, productType }:
     </section>
   );
 }
+
+
