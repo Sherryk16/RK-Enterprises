@@ -24,6 +24,11 @@ export const metadata: Metadata = {
     'furniture store Karachi',
     'furniture store Lahore',
     'furniture store Islamabad',
+    'furniture store Rawalpindi',
+    'furniture store Faisalabad',
+    'furniture store Multan',
+    'furniture store Peshawar',
+    'furniture store Quetta',
     'premium furniture',
     'furniture online shopping',
     'furniture delivery Pakistan'

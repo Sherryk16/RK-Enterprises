@@ -7,17 +7,6 @@ interface SEOContentProps {
 
 export default function SEOContent({ category, relatedCategories }: SEOContentProps) {
   
-  const locationKeywords = [
-    'furniture store Karachi',
-    'furniture store Lahore',
-    'furniture store Islamabad',
-    'furniture store Rawalpindi',
-    'furniture store Faisalabad',
-    'furniture store Multan',
-    'furniture store Peshawar',
-    'furniture store Quetta'
-  ];
-
   return (
     <section className="py-8 bg-gray-50" aria-labelledby="seo-content-heading">
       <div className="container mx-auto px-4">
@@ -48,18 +37,6 @@ export default function SEOContent({ category, relatedCategories }: SEOContentPr
               Enjoy free nationwide delivery on all orders. We ensure your furniture 
               arrives safely and on time, anywhere in Pakistan.
             </p>
-          </div>
-        </div>
-
-        {/* Location-based content */}
-        <div className="bg-white p-6 rounded-lg shadow-sm mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">📍 Serving All Major Cities in Pakistan</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-600">
-            {locationKeywords.map((location, index) => (
-              <span key={index} className="hover:text-amber-600 transition-colors">
-                {location}
-              </span>
-            ))}
           </div>
         </div>
 

@@ -3,14 +3,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { upsertProduct, getCategoriesWithSubcategories } from '@/lib/products';
 import SimpleImageUpload from './SimpleImageUpload';
+import { getSharedSubcategories } from '@/lib/products'; // Import getSharedSubcategories
+import { StructuredCategory, StructuredSubcategory, transformCategories } from '@/lib/utils'; // Import new types and transform function
 
 interface ProductFormData {
   name: string;
   slug: string;
   price: string;
   original_price: string;
-  category_id: string;
-  subcategory_id: string;
+  category_id: string | null;
+  subcategory_id: string | null;
   description: string;
   detailed_description: string;
   colors: string[];
@@ -27,24 +29,20 @@ interface ProductFormData {
   is_folding_furniture: boolean;
 }
 
-interface CategoryData {
-  id: string;
-  name: string;
-  slug: string;
-  description?: string;
-  category_subcategories?: { subcategory_id: SubcategoryData[] }[]; // Nested structure from Supabase
-}
+// interface CategoryData {
+//   id: string;
+//   name: string;
+//   slug: string;
+//   description?: string;
+//   category_subcategories?: { subcategory_id: SubcategoryData[] }[]; // Nested structure from Supabase
+// }
 
-interface SubcategoryData {
-  id: string;
-  name: string;
-  slug: string;
-  category_id?: string;
-}
-
-interface TransformedCategoryData extends CategoryData {
-  subcategories: SubcategoryData[]; // Flattened structure for client-side use
-}
+// interface SubcategoryData {
+//   id: string;
+//   name: string;
+//   slug: string;
+//   category_id?: string;
+// }
 
 interface ProductProps {
   id?: string;
@@ -52,7 +50,7 @@ interface ProductProps {
   slug?: string;
   price?: string | number;
   original_price?: string | number | null;
-  category_id?: string;
+  category_id?: string | null;
   subcategory_id?: string | null;
   description?: string;
   detailed_description?: string;
@@ -94,21 +92,28 @@ export default function ProductForm({ product, onClose }: { product: ProductProp
     is_folding_furniture: false,
   });
 
-  const [categories, setCategories] = useState<TransformedCategoryData[]>([]);
-  const [subcategories, setSubcategories] = useState<SubcategoryData[]>([]);
+  const [categories, setCategories] = useState<StructuredCategory[]>([]);
+  const [subcategories, setSubcategories] = useState<StructuredSubcategory[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchCategories = useCallback(async () => {
     try {
-      const data: CategoryData[] | null = await getCategoriesWithSubcategories();
-      const transformedCategories = (data || []).map((cat: CategoryData) => ({
-        ...cat,
-        subcategories: (cat.category_subcategories || []).flatMap((link: { subcategory_id: SubcategoryData[] }) => link.subcategory_id || [])
-      }));
-      setCategories(transformedCategories);
-
+      // Fetch both raw categories and shared subcategories
+      const [categoriesData, sharedSubcategories] = await Promise.all([
+        getCategoriesWithSubcategories(),
+        // You would typically have a similar function to fetch shared subcategories if they are separate
+        // For now, let's assume getCategoriesWithSubcategories also returns necessary data or we mock it.
+        // If getSharedSubcategories is needed, import it from @/lib/products
+        getSharedSubcategories() // Fetch shared subcategories
+      ]);
+  
+      // Transform the fetched data into the structured format
+      const transformed = transformCategories(categoriesData || [], sharedSubcategories || []);
+      setCategories(transformed);
+  
       if (product && product.category_id) {
-        const selectedCat = transformedCategories.find((c) => c.id === product.category_id);
+        // Find the category in the transformed structure
+        const selectedCat = transformed.find((c) => c.id === product.category_id);
         if (selectedCat) {
           setSubcategories(selectedCat.subcategories || []);
         }
@@ -150,11 +155,14 @@ export default function ProductForm({ product, onClose }: { product: ProductProp
         });
 
         if (product.category_id) {
-          const allCats = await getCategoriesWithSubcategories();
-          const selectedCategory = (allCats || []).find((c: CategoryData) => c.id === product.category_id);
-          if (selectedCategory && selectedCategory.category_subcategories) {
-            const flatSubcategories = selectedCategory.category_subcategories.flatMap((link: { subcategory_id: SubcategoryData[] }) => link.subcategory_id || []);
-            setSubcategories(flatSubcategories);
+          const [allCatsData, allSharedSubcategories] = await Promise.all([
+            getCategoriesWithSubcategories(),
+            getSharedSubcategories()
+          ]);
+          const allTransformedCategories = transformCategories(allCatsData || [], allSharedSubcategories || []);
+          const selectedCategory = allTransformedCategories.find((c) => c.id === product.category_id);
+          if (selectedCategory) {
+            setSubcategories(selectedCategory.subcategories || []);
           }
         }
       }
@@ -193,6 +201,8 @@ export default function ProductForm({ product, onClose }: { product: ProductProp
         ...formData,
         id: product?.id,
         slug: generateSlug(formData.name),
+        category_id: formData.category_id ?? '',
+        subcategory_id: formData.subcategory_id ?? '',
         price: parseFloat(formData.price),
         original_price: formData.original_price ? parseFloat(formData.original_price) : undefined,
         colors: formData.colors.filter(color => color.trim() !== ''),
@@ -317,13 +327,13 @@ export default function ProductForm({ product, onClose }: { product: ProductProp
               <div>
                 <label className="block text-sm font-medium text-gray-700">Category</label>
                 <select
-                  value={formData.category_id}
+                  value={formData.category_id || ''}
                   onChange={(e) => handleCategoryChange(e.target.value)}
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                   required
                 >
                   <option value="">Select Category</option>
-                  {categories.map((category: TransformedCategoryData) => (
+                  {categories.map((category: StructuredCategory) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
                     </option>
@@ -334,13 +344,13 @@ export default function ProductForm({ product, onClose }: { product: ProductProp
               <div>
                 <label className="block text-sm font-medium text-gray-700">Subcategory</label>
                 <select
-                  value={formData.subcategory_id}
+                  value={formData.subcategory_id || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, subcategory_id: e.target.value }))}
                   className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
                   disabled={!formData.category_id || subcategories.length === 0}
                 >
                   <option value="">Select Subcategory</option>
-                  {subcategories.map((subcategory: SubcategoryData) => (
+                  {subcategories.map((subcategory: StructuredSubcategory) => (
                     <option key={subcategory.id} value={subcategory.id}>
                       {subcategory.name}
                     </option>

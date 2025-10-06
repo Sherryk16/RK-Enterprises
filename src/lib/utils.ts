@@ -47,3 +47,137 @@ import slugify from 'slugify';
 export const simpleSlugify = (text: string) => {
   return slugify(text, { lower: true, strict: true });
 };
+
+export interface StructuredSubcategory {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface StructuredCategory {
+  id: string;
+  name: string;
+  slug: string;
+  subcategories: StructuredSubcategory[];
+}
+
+export const transformCategories = (
+  categoriesData: any[],
+  sharedSubcategories: any[]
+): StructuredCategory[] => {
+  const structuredCategories: StructuredCategory[] = [];
+
+  const findSubcategory = (name: string, subcategories: any[]) => {
+    const normalizedName = normalizeCategoryName(name);
+    return subcategories.find(
+      (sub) =>
+        normalizeCategoryName(sub.name) === normalizedName ||
+        simpleSlugify(sub.name) === simpleSlugify(name)
+    );
+  };
+
+  const processCategoryGroup = (groupName: string, subcategoryNames: string[]): StructuredCategory => {
+    const groupSlug = simpleSlugify(groupName);
+    const subcategories: StructuredSubcategory[] = [];
+
+    subcategoryNames.forEach(subName => {
+      const foundSub = findSubcategory(subName, sharedSubcategories);
+      if (foundSub) {
+        subcategories.push({
+          id: foundSub.id,
+          name: foundSub.name,
+          slug: foundSub.slug || simpleSlugify(foundSub.name),
+        });
+      } else {
+        categoriesData.forEach(cat => {
+          if (cat.category_subcategories) {
+            const foundInCat = findSubcategory(subName, cat.category_subcategories.map((link: any) => link.subcategory_id));
+            if (foundInCat && !subcategories.some(s => s.id === foundInCat.id)) {
+                subcategories.push({
+                    id: foundInCat.id,
+                    name: foundInCat.name,
+                    slug: foundInCat.slug || simpleSlugify(foundInCat.name),
+                });
+            }
+          }
+        });
+
+        if (!subcategories.some(s => simpleSlugify(s.name) === simpleSlugify(subName))) {
+          console.warn(`Subcategory "${subName}" not found in fetched data. Creating placeholder.`);
+          subcategories.push({
+            id: simpleSlugify(subName),
+            name: subName,
+            slug: simpleSlugify(subName),
+          });
+        }
+      }
+    });
+
+    return {
+      id: groupSlug,
+      name: groupName,
+      slug: groupSlug,
+      subcategories,
+    };
+  };
+
+  structuredCategories.push(
+    processCategoryGroup('Office Range', [
+      'Visitor Office Chairs',
+      'Staff Office Chairs',
+      'Manager Office Chairs',
+      'Executive Office Chairs',
+      'Gaming Chairs',
+      'Visitor Benches',
+      'Lab Chair',
+    ])
+  );
+  structuredCategories.push(
+    processCategoryGroup('Waiting Benches Range', [
+      'Steel Benche',
+      'Plastic Benche',
+      'Wooden Benche',
+    ])
+  );
+  structuredCategories.push(
+    processCategoryGroup('Dining Range', [
+      'Dining Table Sets',
+      'Dining Tables',
+      'Dining Chairs',
+      'Bar Stools',
+    ])
+  );
+  structuredCategories.push(
+    processCategoryGroup('Folding Range', [
+      'Folding Chair',
+      'Folding Table Sets',
+    ])
+  );
+  structuredCategories.push(
+    processCategoryGroup('Molded Range', [
+      'Plastic Chairs',
+      'Plastic Table',
+      'Plastic & Table Sets',
+      'Namaz Chair',
+    ])
+  );
+  structuredCategories.push(
+    processCategoryGroup('Outdoor Range', [
+      'Rattan Sofa',
+      'Outdoor Chair',
+      'UPVC Craft',
+      'Waste Bin',
+      'Swing Range',
+      'Play Ground Swing',
+    ])
+  );
+  structuredCategories.push(
+    processCategoryGroup('Study Range', [
+      'Study Chairs',
+      'Joint Desks',
+      'Study Desk Benches',
+    ])
+  );
+
+  return structuredCategories;
+};
