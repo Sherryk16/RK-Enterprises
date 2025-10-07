@@ -60,63 +60,63 @@ export default async function CategoryPage({ params: rawParams }: CategoryPagePr
     console.log('Initial products fetched by getProductsByCategory:', products.length);
 
     // If this is Office Furniture, add visitor chairs and office products
-    if (category && (category.name?.toLowerCase().includes('office') || category.slug?.includes('office'))) {
-      console.log('Detected Office Furniture category (normal case), fetching additional products...');
+    // if (category && (category.name?.toLowerCase().includes('office') || category.slug?.includes('office'))) {
+    //   console.log('Detected Office Furniture category (normal case), fetching additional products...');
       
-      const { data: visitorProducts, error: visitorError } = await supabase
-        .from('products')
-        .select(`
-          *,
-          categories:category_id (
-            id,
-            name,
-            slug
-          ),
-          subcategories:subcategory_id (
-            id,
-            name,
-            slug
-          )
-        `) as { data: ProductData[] | null, error: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+    //   const { data: visitorProducts, error: visitorError } = await supabase
+    //     .from('products')
+    //     .select(`
+    //       *,
+    //       categories:category_id (
+    //         id,
+    //         name,
+    //         slug
+    //       ),
+    //       subcategories:subcategory_id (
+    //         id,
+    //         name,
+    //         slug
+    //       )
+    //     `) as { data: ProductData[] | null, error: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
       
-      console.log('Visitor products found:', visitorProducts?.length || 0);
+    //   console.log('Visitor products found:', visitorProducts?.length || 0);
       
-      const { data: officeProducts, error: officeError } = await supabase
-        .from('products')
-        .select(`
-          *,
-          categories:category_id (
-            id,
-            name,
-            slug
-          ),
-          subcategories:subcategory_id (
-            id,
-            name,
-            slug
-          )
-        `) as { data: ProductData[] | null, error: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+    //   const { data: officeProducts, error: officeError } = await supabase
+    //     .from('products')
+    //     .select(`
+    //       *,
+    //       categories:category_id (
+    //         id,
+    //         name,
+    //         slug
+    //       ),
+    //       subcategories:subcategory_id (
+    //         id,
+    //         name,
+    //         slug
+    //       )
+    //     `) as { data: ProductData[] | null, error: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
       
-      console.log('Office products found:', officeProducts?.length || 0);
+    //   console.log('Office products found:', officeProducts?.length || 0);
       
-      const allProducts = [...products];
-      const existingIds = new Set(products.map(p => p.id));
+    //   const allProducts = [...products];
+    //   const existingIds = new Set(products.map(p => p.id));
       
-      if (!visitorError && visitorProducts) {
-        const newVisitorProducts = visitorProducts.filter(p => !existingIds.has(p.id));
-        allProducts.push(...newVisitorProducts);
-        newVisitorProducts.forEach(p => existingIds.add(p.id));
-      }
+    //   if (!visitorError && visitorProducts) {
+    //     const newVisitorProducts = visitorProducts.filter(p => !existingIds.has(p.id));
+    //     allProducts.push(...newVisitorProducts);
+    //     newVisitorProducts.forEach(p => existingIds.add(p.id));
+    //   }
       
-      if (!officeError && officeProducts) {
-        const newOfficeProducts = officeProducts.filter(p => !existingIds.has(p.id));
-        allProducts.push(...newOfficeProducts);
-        newOfficeProducts.forEach(p => existingIds.add(p.id));
-      }
+    //   if (!officeError && officeProducts) {
+    //     const newOfficeProducts = officeProducts.filter(p => !existingIds.has(p.id));
+    //     allProducts.push(...newOfficeProducts);
+    //     newOfficeProducts.forEach(p => existingIds.add(p.id));
+    //   }
       
-      products = allProducts;
-      console.log('Final products count (normal case):', products.length);
-    }
+    //   products = allProducts;
+    //   console.log('Final products count (normal case):', products.length);
+    // }
 
     if (!category) {
       const slugify = (text: string) => text.toString().trim().toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -148,63 +148,63 @@ export default async function CategoryPage({ params: rawParams }: CategoryPagePr
       products = data || [];
       console.log('Products after fallback:', products.length);
       
-      if (category.name?.toLowerCase().includes('office') || category.slug?.includes('office')) {
-        console.log('Detected Office Furniture category, fetching additional products...');
+      // if (category.name?.toLowerCase().includes('office') || category.slug?.includes('office')) {
+      //   console.log('Detected Office Furniture category, fetching additional products...');
         
-        const { data: visitorProducts, error: visitorError } = await supabase
-          .from('products')
-          .select(`
-            *,
-            categories:category_id (
-              id,
-              name,
-              slug
-            ),
-            subcategories:subcategory_id (
-              id,
-              name,
-              slug
-            )
-          `) as { data: ProductData[] | null, error: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      //   const { data: visitorProducts, error: visitorError } = await supabase
+      //     .from('products')
+      //     .select(`
+      //       *,
+      //       categories:category_id (
+      //         id,
+      //         name,
+      //         slug
+      //       ),
+      //       subcategories:subcategory_id (
+      //         id,
+      //         name,
+      //         slug
+      //       )
+      //     `) as { data: ProductData[] | null, error: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
         
-        console.log('Visitor products found:', visitorProducts?.length || 0);
+      //   console.log('Visitor products found:', visitorProducts?.length || 0);
         
-        const { data: officeProducts, error: officeError } = await supabase
-          .from('products')
-          .select(`
-            *,
-            categories:category_id (
-              id,
-              name,
-              slug
-            ),
-            subcategories:subcategory_id (
-              id,
-              name,
-              slug
-            )
-          `) as { data: ProductData[] | null, error: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
+      //   const { data: officeProducts, error: officeError } = await supabase
+      //     .from('products')
+      //     .select(`
+      //       *,
+      //       categories:category_id (
+      //         id,
+      //         name,
+      //         slug
+      //       ),
+      //       subcategories:subcategory_id (
+      //         id,
+      //         name,
+      //         slug
+      //       )
+      //     `) as { data: ProductData[] | null, error: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
         
-        console.log('Office products found:', officeProducts?.length || 0);
+      //   console.log('Office products found:', officeProducts?.length || 0);
         
-        const allProducts = [...products];
-        const existingIds = new Set(products.map(p => p.id));
+      //   const allProducts = [...products];
+      //   const existingIds = new Set(products.map(p => p.id));
         
-        if (!visitorError && visitorProducts) {
-          const newVisitorProducts = visitorProducts.filter(p => !existingIds.has(p.id));
-          allProducts.push(...newVisitorProducts);
-          newVisitorProducts.forEach(p => existingIds.add(p.id));
-        }
+      //   if (!visitorError && visitorProducts) {
+      //     const newVisitorProducts = visitorProducts.filter(p => !existingIds.has(p.id));
+      //     allProducts.push(...newVisitorProducts);
+      //     newVisitorProducts.forEach(p => existingIds.add(p.id));
+      //   }
         
-        if (!officeError && officeProducts) {
-          const newOfficeProducts = officeProducts.filter(p => !existingIds.has(p.id));
-          allProducts.push(...newOfficeProducts);
-          newOfficeProducts.forEach(p => existingIds.add(p.id));
-        }
+      //   if (!officeError && officeProducts) {
+      //     const newOfficeProducts = officeProducts.filter(p => !existingIds.has(p.id));
+      //     allProducts.push(...newOfficeProducts);
+      //     newOfficeProducts.forEach(p => existingIds.add(p.id));
+      //   }
         
-        products = allProducts;
-        console.log('Final products count:', products.length);
-      }
+      //   products = allProducts;
+      //   console.log('Final products count:', products.length);
+      // }
     }
 
     if (!category) {

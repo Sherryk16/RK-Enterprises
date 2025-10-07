@@ -1,4 +1,9 @@
-import { debugDatabaseContents } from '@/lib/products';
+import { 
+  getAllProducts, 
+  getOfficeProducts,
+  getExistingCategoriesForDebug, 
+  getRawProductSample
+} from '@/lib/products';
 
 interface CategoryDebugData {
   id: string;
@@ -37,7 +42,42 @@ interface DebugContents {
 }
 
 export default async function DebugPage() {
-  const debugData: DebugContents = await debugDatabaseContents();
+  let debugData: DebugContents = {};
+  try {
+    const categories = await getExistingCategoriesForDebug();
+    const allProductsResult = await getAllProducts(); // Fetch all products without filters
+    const rawProducts = await getRawProductSample();
+    const officeProductsData = await getOfficeProducts();
+
+    const totalCategories = categories?.length || 0;
+    const totalProducts = allProductsResult?.totalCount || 0;
+    const officeProducts = officeProductsData?.length || 0;
+
+    const productsByCategory: ProductByCategoryDebugData[] = [];
+    if (categories && allProductsResult?.products) {
+      for (const category of categories) {
+        const count = allProductsResult.products.filter(p => p.category_id === category.id).length;
+        productsByCategory.push({
+          categoryName: category.name,
+          categorySlug: category.slug || '',
+          productCount: count,
+        });
+      }
+    }
+
+    debugData = {
+      summary: {
+        totalCategories,
+        totalProducts,
+        officeProducts,
+        productsByCategory,
+      },
+      categories: categories || [],
+      products: rawProducts || [],
+    };
+  } catch (err: unknown) {
+    debugData.error = err instanceof Error ? err.message : 'An unknown error occurred while fetching debug data.';
+  }
 
   if (debugData.error) {
     return (

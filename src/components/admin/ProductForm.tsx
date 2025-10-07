@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { upsertProduct, getCategoriesWithSubcategories } from '@/lib/products';
-import SimpleImageUpload from './SimpleImageUpload';
-import { getSharedSubcategories } from '@/lib/products'; // Import getSharedSubcategories
-import { StructuredCategory, StructuredSubcategory, transformCategories } from '@/lib/utils'; // Import new types and transform function
+import { supabase } from '@/lib/supabase';
+import SimpleImageUpload from './SimpleImageUpload'; // Import the SimpleImageUpload component
 
 interface ProductFormData {
   name: string;
@@ -29,20 +27,17 @@ interface ProductFormData {
   is_folding_furniture: boolean;
 }
 
-// interface CategoryData {
-//   id: string;
-//   name: string;
-//   slug: string;
-//   description?: string;
-//   category_subcategories?: { subcategory_id: SubcategoryData[] }[]; // Nested structure from Supabase
-// }
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
 
-// interface SubcategoryData {
-//   id: string;
-//   name: string;
-//   slug: string;
-//   category_id?: string;
-// }
+interface Subcategory {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 interface ProductProps {
   id?: string;
@@ -68,7 +63,13 @@ interface ProductProps {
   is_folding_furniture?: boolean;
 }
 
-export default function ProductForm({ product, onClose }: { product: ProductProps | null; onClose: () => void }) {
+export default function ProductForm({
+  product,
+  onClose
+}: {
+  product: ProductProps | null;
+  onClose: () => void
+}) {
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     slug: '',
@@ -92,94 +93,96 @@ export default function ProductForm({ product, onClose }: { product: ProductProp
     is_folding_furniture: false,
   });
 
-  const [categories, setCategories] = useState<StructuredCategory[]>([]);
-  const [subcategories, setSubcategories] = useState<StructuredSubcategory[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [loading, setLoading] = useState(false);
+  const [newImageUrl, setNewImageUrl] = useState(''); // New state for manual image URL
 
+  // Fetch categories from Supabase
   const fetchCategories = useCallback(async () => {
     try {
-      // Fetch both raw categories and shared subcategories
-      const [categoriesData, sharedSubcategories] = await Promise.all([
-        getCategoriesWithSubcategories(),
-        // You would typically have a similar function to fetch shared subcategories if they are separate
-        // For now, let's assume getCategoriesWithSubcategories also returns necessary data or we mock it.
-        // If getSharedSubcategories is needed, import it from @/lib/products
-        getSharedSubcategories() // Fetch shared subcategories
-      ]);
-  
-      // Transform the fetched data into the structured format
-      const transformed = transformCategories(categoriesData || [], sharedSubcategories || []);
-      setCategories(transformed);
-  
-      if (product && product.category_id) {
-        // Find the category in the transformed structure
-        const selectedCat = transformed.find((c) => c.id === product.category_id);
-        if (selectedCat) {
-          setSubcategories(selectedCat.subcategories || []);
-        }
-      }
+      const { data, error } = await supabase
+        .from('categories')
+        .select('id, name, slug')
+        .order('name');
 
+      if (error) throw error;
+      setCategories(data || []);
     } catch (error) {
       console.error('Error fetching categories:', error);
       setCategories([]);
+    }
+  }, []);
+
+  // Fetch subcategories for a specific category
+  const fetchSubcategoriesForCategory = useCallback(async (categoryId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('subcategories') // Directly query subcategories table
+        .select('id, name, slug')
+        .eq('category_id', categoryId)
+        .order('name');
+
+      if (error) throw error;
+
+      setSubcategories(data || []);
+    } catch (error) {
+      console.error('Error fetching subcategories:', error);
       setSubcategories([]);
     }
-  }, [product]); // Add product to dependencies
+  }, []);
 
+  // Initialize form with product data if editing
   useEffect(() => {
-    const loadCategoriesAndProduct = async () => {
-      await fetchCategories();
+    fetchCategories();
 
-      if (product) {
-        setFormData({
-          name: product.name || '',
-          slug: product.slug || '',
-          price: String(product.price || ''),
-          original_price: String(product.original_price || ''),
-          category_id: product.category_id || '',
-          subcategory_id: product.subcategory_id || '',
-          description: product.description || '',
-          detailed_description: product.detailed_description || '',
-          colors: product.colors || [''],
-          images: product.images || [''],
-          is_featured: product.is_featured || false,
-          show_in_office: product.show_in_office || false,
-          is_molded: product.is_molded || false,
-          is_ceo_chair: product.is_ceo_chair || false,
-          is_gaming_chair: product.is_gaming_chair || false,
-          is_dining_chair: product.is_dining_chair || false,
-          is_visitor_sofa: product.is_visitor_sofa || false,
-          is_study_chair: product.is_study_chair || false,
-          is_outdoor_furniture: product.is_outdoor_furniture || false,
-          is_folding_furniture: product.is_folding_furniture || false,
-        });
+    if (product) {
+      setFormData({
+        name: product.name || '',
+        slug: product.slug || '',
+        price: String(product.price || ''),
+        original_price: String(product.original_price || ''),
+        category_id: product.category_id || '',
+        subcategory_id: product.subcategory_id || '',
+        description: product.description || '',
+        detailed_description: product.detailed_description || '',
+        colors: product.colors || [''],
+        images: product.images || [''],
+        is_featured: product.is_featured || false,
+        show_in_office: product.show_in_office || false,
+        is_molded: product.is_molded || false,
+        is_ceo_chair: product.is_ceo_chair || false,
+        is_gaming_chair: product.is_gaming_chair || false,
+        is_dining_chair: product.is_dining_chair || false,
+        is_visitor_sofa: product.is_visitor_sofa || false,
+        is_study_chair: product.is_study_chair || false,
+        is_outdoor_furniture: product.is_outdoor_furniture || false,
+        is_folding_furniture: product.is_folding_furniture || false,
+      });
 
-        if (product.category_id) {
-          const [allCatsData, allSharedSubcategories] = await Promise.all([
-            getCategoriesWithSubcategories(),
-            getSharedSubcategories()
-          ]);
-          const allTransformedCategories = transformCategories(allCatsData || [], allSharedSubcategories || []);
-          const selectedCategory = allTransformedCategories.find((c) => c.id === product.category_id);
-          if (selectedCategory) {
-            setSubcategories(selectedCategory.subcategories || []);
-          }
-        }
+      // Load subcategories if category is set
+      if (product.category_id) {
+        fetchSubcategoriesForCategory(product.category_id);
       }
-    };
-    loadCategoriesAndProduct();
-  }, [product, fetchCategories]); // Add fetchCategories to useEffect dependencies
+    }
+  }, [product, fetchCategories, fetchSubcategoriesForCategory]);
 
+  // Handle category change
   const handleCategoryChange = (categoryId: string) => {
-    const category = categories.find((c) => c.id === categoryId);
-    if (category) {
-      setSubcategories(category.subcategories || []);
+    setFormData(prev => ({
+      ...prev,
+      category_id: categoryId,
+      subcategory_id: '' // Reset subcategory when category changes
+    }));
+
+    if (categoryId) {
+      fetchSubcategoriesForCategory(categoryId);
     } else {
       setSubcategories([]);
     }
-    setFormData(prev => ({ ...prev, category_id: categoryId, subcategory_id: '' }));
   };
 
+  // Generate unique slug
   const generateSlug = (name: string) => {
     const baseSlug = name
       .toLowerCase()
@@ -187,42 +190,67 @@ export default function ProductForm({ product, onClose }: { product: ProductProp
       .replace(/\s+/g, '-')
       .replace(/-+/g, '-')
       .trim();
-    
+
     const timestamp = Date.now().toString().slice(-6);
     return `${baseSlug}-${timestamp}`;
   };
 
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      await upsertProduct({
-        ...formData,
-        id: product?.id,
-        slug: generateSlug(formData.name),
-        category_id: formData.category_id ?? '',
-        subcategory_id: formData.subcategory_id ?? '',
+      const productData = {
+        name: formData.name,
+        slug: product?.id ? formData.slug : generateSlug(formData.name),
         price: parseFloat(formData.price),
-        original_price: formData.original_price ? parseFloat(formData.original_price) : undefined,
+        original_price: formData.original_price ? parseFloat(formData.original_price) : null,
+        category_id: formData.category_id || null,
+        subcategory_id: formData.subcategory_id || null,
+        description: formData.description,
+        detailed_description: formData.detailed_description,
         colors: formData.colors.filter(color => color.trim() !== ''),
         images: formData.images.filter(img => img.trim() !== ''),
-      });
+        is_featured: formData.is_featured,
+        show_in_office: formData.show_in_office,
+        is_molded: formData.is_molded,
+        is_ceo_chair: formData.is_ceo_chair,
+        is_gaming_chair: formData.is_gaming_chair,
+        is_dining_chair: formData.is_dining_chair,
+        is_visitor_sofa: formData.is_visitor_sofa,
+        is_study_chair: formData.is_study_chair,
+        is_outdoor_furniture: formData.is_outdoor_furniture,
+        is_folding_furniture: formData.is_folding_furniture,
+      };
+
+      let result;
+      if (product?.id) {
+        // Update existing product
+        result = await supabase
+          .from('products')
+          .update(productData)
+          .eq('id', product.id);
+      } else {
+        // Insert new product
+        result = await supabase
+          .from('products')
+          .insert([productData]);
+      }
+
+      if (result.error) throw result.error;
+
+      alert('Product saved successfully!');
       onClose();
     } catch (error: unknown) {
-      console.error('Error saving product:', error);
-      let errorMessage = 'Error saving product';
-      if (error instanceof Error) {
-        errorMessage = `Error saving product: ${error.message}`;
-      } else if (typeof error === 'string') {
-        errorMessage = `Error saving product: ${error}`;
-      }
-      alert(errorMessage);
+      console.error('Error saving product:', JSON.stringify(error, null, 2));
+      alert(`Error saving product: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
   };
 
+  // Color management
   const addColor = () => {
     setFormData(prev => ({ ...prev, colors: [...prev.colors, ''] }));
   };
@@ -241,8 +269,16 @@ export default function ProductForm({ product, onClose }: { product: ProductProp
     }));
   };
 
-  const addImage = () => {
-    setFormData(prev => ({ ...prev, images: [...prev.images, ''] }));
+  // Image management
+  const handleImageUploaded = (url: string) => {
+    setFormData(prev => ({ ...prev, images: [...prev.images, url] }));
+  };
+
+  const addManualImage = () => {
+    if (newImageUrl.trim()) {
+      setFormData(prev => ({ ...prev, images: [...prev.images, newImageUrl.trim()] }));
+      setNewImageUrl(''); // Clear input after adding
+    }
   };
 
   const removeImage = (index: number) => {
@@ -259,13 +295,6 @@ export default function ProductForm({ product, onClose }: { product: ProductProp
     }));
   };
 
-  const handleImageUploaded = (url: string) => {
-    setFormData(prev => ({
-      ...prev,
-      images: [...prev.images, url]
-    }));
-  };
-
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
       <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
@@ -274,15 +303,15 @@ export default function ProductForm({ product, onClose }: { product: ProductProp
             {product ? 'Edit Product' : 'Add New Product'}
           </h3>
           
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Name</label>
+                <label className="block text-sm font-medium text-gray-700">Name *</label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
                   required
                 />
               </div>
@@ -291,22 +320,22 @@ export default function ProductForm({ product, onClose }: { product: ProductProp
                 <label className="block text-sm font-medium text-gray-700">Slug (Auto-generated)</label>
                 <input
                   type="text"
-                  value={generateSlug(formData.name)}
+                  value={formData.name ? generateSlug(formData.name) : ''}
                   disabled
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-100 text-gray-500"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Price</label>
+                <label className="block text-sm font-medium text-gray-700">Price *</label>
                 <input
                   type="number"
                   step="0.01"
                   value={formData.price}
                   onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
                   required
                 />
               </div>
@@ -318,22 +347,22 @@ export default function ProductForm({ product, onClose }: { product: ProductProp
                   step="0.01"
                   value={formData.original_price}
                   onChange={(e) => setFormData(prev => ({ ...prev, original_price: e.target.value }))}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">Category</label>
+                <label className="block text-sm font-medium text-gray-700">Category *</label>
                 <select
                   value={formData.category_id || ''}
                   onChange={(e) => handleCategoryChange(e.target.value)}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
                   required
                 >
                   <option value="">Select Category</option>
-                  {categories.map((category: StructuredCategory) => (
+                  {categories.map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
                     </option>
@@ -346,11 +375,11 @@ export default function ProductForm({ product, onClose }: { product: ProductProp
                 <select
                   value={formData.subcategory_id || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, subcategory_id: e.target.value }))}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
                   disabled={!formData.category_id || subcategories.length === 0}
                 >
                   <option value="">Select Subcategory</option>
-                  {subcategories.map((subcategory: StructuredSubcategory) => (
+                  {subcategories.map((subcategory) => (
                     <option key={subcategory.id} value={subcategory.id}>
                       {subcategory.name}
                     </option>
@@ -364,7 +393,7 @@ export default function ProductForm({ product, onClose }: { product: ProductProp
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
                 rows={2}
               />
             </div>
@@ -374,21 +403,22 @@ export default function ProductForm({ product, onClose }: { product: ProductProp
               <textarea
                 value={formData.detailed_description}
                 onChange={(e) => setFormData(prev => ({ ...prev, detailed_description: e.target.value }))}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
                 rows={3}
               />
             </div>
 
+            {/* Color Management Section */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">Colors</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Colors</label>
               {formData.colors.map((color, index) => (
-                <div key={index} className="flex gap-2 mt-2">
+                <div key={index} className="flex gap-2 mb-2">
                   <input
                     type="text"
                     value={color}
                     onChange={(e) => updateColor(index, e.target.value)}
-                    className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                    placeholder="Color name"
+                    className="flex-1 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="e.g., Red, Blue"
                   />
                   <button
                     type="button"
@@ -402,92 +432,85 @@ export default function ProductForm({ product, onClose }: { product: ProductProp
               <button
                 type="button"
                 onClick={addColor}
-                className="mt-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 text-sm"
               >
                 Add Color
               </button>
             </div>
 
+            {/* Image Upload Section */}
+            <SimpleImageUpload 
+              onImageUploaded={handleImageUploaded}
+              currentImages={formData.images}
+            />
+
             <div>
-              <SimpleImageUpload 
-                onImageUploaded={handleImageUploaded}
-                currentImages={formData.images.filter(img => img.trim() !== '')}
-              />
-              
-              {/* Manual URL input as backup */}
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Or add image URLs manually:</label>
-                {formData.images.map((image, index) => (
-                  <div key={index} className="flex gap-2 mt-2">
-                    <input
-                      type="url"
-                      value={image}
-                      onChange={(e) => updateImage(index, e.target.value)}
-                      className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-                      placeholder="Image URL"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ))}
+              <label className="block text-sm font-medium text-gray-700 mb-2">Image URLs (Manually Added)</label>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="url"
+                  value={newImageUrl}
+                  onChange={(e) => setNewImageUrl(e.target.value)}
+                  className="flex-1 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Paste image URL here"
+                />
                 <button
                   type="button"
-                  onClick={addImage}
-                  className="mt-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  onClick={addManualImage}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                 >
                   Add URL
                 </button>
               </div>
+              {formData.images.map((image, index) => (
+                <div key={index} className="flex gap-2 mb-2">
+                  <input
+                    type="url"
+                    value={image}
+                    onChange={(e) => updateImage(index, e.target.value)}
+                    className="flex-1 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="https://example.com/image.jpg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.is_featured}
-                  onChange={(e) => setFormData(prev => ({ ...prev, is_featured: e.target.checked }))}
-                  className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                />
-                <span className="ml-2 text-sm text-gray-700">Featured</span>
-              </label>
-              
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.show_in_office}
-                  onChange={(e) => setFormData(prev => ({ ...prev, show_in_office: e.target.checked }))}
-                  className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                />
-                <span className="ml-2 text-sm text-gray-700">Office</span>
-              </label>
-              
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.is_ceo_chair}
-                  onChange={(e) => setFormData(prev => ({ ...prev, is_ceo_chair: e.target.checked }))}
-                  className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                />
-                <span className="ml-2 text-sm text-gray-700">CEO Chair</span>
-              </label>
-              
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.is_molded}
-                  onChange={(e) => setFormData(prev => ({ ...prev, is_molded: e.target.checked }))}
-                  className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                />
-                <span className="ml-2 text-sm text-gray-700">Molded</span>
-              </label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">Product Tags</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {[ 
+                  { key: 'is_featured', label: 'Featured' },
+                  { key: 'show_in_office', label: 'Office' },
+                  { key: 'is_molded', label: 'Molded' },
+                  { key: 'is_ceo_chair', label: 'CEO Chair' },
+                  { key: 'is_gaming_chair', label: 'Gaming Chair' },
+                  { key: 'is_dining_chair', label: 'Dining Chair' },
+                  { key: 'is_visitor_sofa', label: 'Visitor Sofa' },
+                  { key: 'is_study_chair', label: 'Study Chair' },
+                  { key: 'is_outdoor_furniture', label: 'Outdoor' },
+                  { key: 'is_folding_furniture', label: 'Folding' },
+                ].map(({ key, label }) => (
+                  <label key={key} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={formData[key as keyof ProductFormData] as boolean}
+                      onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.checked }))}
+                      className="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">{label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
-            <div className="flex justify-end space-x-3 pt-4">
+            <div className="flex justify-end space-x-3 pt-4 border-t">
               <button
                 type="button"
                 onClick={onClose}

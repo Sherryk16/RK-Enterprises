@@ -36,8 +36,8 @@ interface ProductData {
 }
 
 // FIXED: params is now a Promise in Next.js 15
-interface CategoryPageProps {
-  params: Promise<{ slug: string }>;
+interface SubcategoryPageProps {
+  params: Promise<{ slug: string; subslug: string }>;
 }
 
 async function getCategoryBySlug(slug: string) {
@@ -54,22 +54,21 @@ async function getCategoryBySlug(slug: string) {
   return category as CategoryData;
 }
 
-async function getSubcategoriesByCategory(categoryId: string) {
-  const { data: subcategories, error } = await supabase
+async function getSubcategoryBySlug(subslug: string) {
+  const { data: subcategory, error } = await supabase
     .from('subcategories')
     .select('*')
-    .eq('category_id', categoryId)
-    .order('name');
+    .eq('slug', subslug)
+    .single();
 
-  if (error) {
-    console.error('Error fetching subcategories:', error);
-    return [];
+  if (error || !subcategory) {
+    return null;
   }
 
-  return subcategories as SubcategoryData[];
+  return subcategory as SubcategoryData;
 }
 
-async function getProductsByCategory(categoryId: string) {
+async function getProductsBySubcategory(subcategoryId: string) {
   const { data: products, error } = await supabase
     .from('products')
     .select(`
@@ -85,10 +84,10 @@ async function getProductsByCategory(categoryId: string) {
         slug
       )
     `)
-    .eq('category_id', categoryId);
+    .eq('subcategory_id', subcategoryId);
 
   if (error) {
-    console.error('Error fetching products:', error);
+    console.error('Error fetching products by subcategory:', error);
     return [];
   }
 
@@ -96,37 +95,36 @@ async function getProductsByCategory(categoryId: string) {
 }
 
 // FIXED: Component is now async and awaits params
-export default async function CategoryPage({ params }: CategoryPageProps) {
+export default async function SubcategoryPage({ params }: SubcategoryPageProps) {
   // Await the params promise to get the actual values
-  const { slug } = await params;
+  const { slug, subslug } = await params;
   
-  if (!slug) {
+  if (!slug || !subslug) {
     notFound();
   }
 
-  console.log('CategoryPage: Rendering for slug:', slug);
+  console.log('SubcategoryPage: Rendering for slug:', slug, 'subslug:', subslug);
 
   try {
     const category = await getCategoryBySlug(slug);
+    const subcategory = await getSubcategoryBySlug(subslug);
     
-    if (!category) {
-      console.warn('CategoryPage: Category not found for slug:', slug);
+    if (!category || !subcategory) {
+      console.warn('SubcategoryPage: Category or subcategory not found for slug:', slug, 'subslug:', subslug);
       notFound();
     }
 
-    const [subcategories, products] = await Promise.all([
-      getSubcategoriesByCategory(category.id),
-      getProductsByCategory(category.id)
-    ]);
+    const products = await getProductsBySubcategory(subcategory.id);
 
-    console.log('CategoryPage: Fetched category:', category, 'subcategories:', subcategories.length, 'products:', products.length);
+    console.log('SubcategoryPage: Fetched category:', category, 'subcategory:', subcategory, 'products:', products.length);
 
     return (
       <div className="min-h-screen bg-white">
         <main>
           <section className="bg-gradient-to-r from-amber-50 to-orange-50 py-12">
             <div className="container mx-auto px-4 text-center">
-              <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2">{category.name}</h1>
+              <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-2">{subcategory.name}</h1>
+              <p className="text-lg text-gray-600 mb-4">Part of the {category.name} collection</p>
               <div className="mt-4">
                 <span className="bg-amber-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
                   {products.length} Products Available
@@ -134,26 +132,6 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
               </div>
             </div>
           </section>
-
-          {/* Subcategories Section */}
-          {subcategories.length > 0 && (
-            <section className="py-8 border-b">
-              <div className="container mx-auto px-4">
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">Browse Subcategories</h2>
-                <div className="flex flex-wrap gap-3">
-                  {subcategories.map((subcategory) => (
-                    <Link
-                      key={subcategory.id}
-                      href={`/categories/${slug}/${subcategory.slug}`}
-                      className="inline-block bg-gray-100 hover:bg-amber-100 text-gray-800 px-4 py-2 rounded-full transition-colors duration-200"
-                    >
-                      {subcategory.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </section>
-          )}
 
           {/* Products Section */}
           <section className="py-16">
@@ -187,11 +165,17 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
               ) : (
                 <div className="text-center py-16">
                   <div className="text-6xl mb-4">📦</div>
-                  <h3 className="text-2xl font-bold text-gray-800 mb-2">No Products Found</h3>
-                  <p className="text-gray-600 mb-6">We couldn&apos;t find products in this category.</p>
+                  <h3 className="text-2xl font-bold text-gray-800 mb-2">No Products Found in {subcategory.name}</h3>
+                  <p className="text-gray-600 mb-6">We couldn&apos;t find any products in this subcategory.</p>
+                  <Link 
+                    href={`/categories/${slug}`}
+                    className="bg-amber-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-amber-700 transition-colors duration-200"
+                  >
+                    Back to {category.name}
+                  </Link>
                   <Link 
                     href="/shop"
-                    className="bg-amber-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-amber-700 transition-colors duration-200"
+                    className="ml-4 bg-gray-200 text-gray-800 px-6 py-3 rounded-full font-semibold hover:bg-gray-300 transition-colors duration-200"
                   >
                     View All Products
                   </Link>
@@ -220,39 +204,48 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
       </div>
     );
   } catch (e: unknown) {
-    console.error('CategoryPage: Error rendering category page:', e);
+    console.error('SubcategoryPage: Error rendering subcategory page:', e);
     notFound();
   }
 }
 
 // Generate metadata for the page
-export async function generateMetadata({ params }: CategoryPageProps) {
+export async function generateMetadata({ params }: SubcategoryPageProps) {
   // Await params here too
-  const { slug } = await params;
+  const { slug, subslug } = await params;
   
   const category = await getCategoryBySlug(slug);
+  const subcategory = await getSubcategoryBySlug(subslug);
   
-  if (!category) {
+  if (!category || !subcategory) {
     return {
-      title: 'Category Not Found',
+      title: 'Subcategory Not Found',
     };
   }
   
   return {
-    title: `${category.name} - Shop`,
-    description: `Browse our selection of ${category.name} products`,
+    title: `${subcategory.name} - ${category.name} Products`,
+    description: `Browse our selection of ${subcategory.name} products from the ${category.name} collection.`,
   };
 }
 
-// Generate static params for all categories
+// Generate static params for all categories and subcategories
 export async function generateStaticParams() {
   const { data: categories } = await supabase
     .from('categories')
-    .select('slug');
+    .select('slug, subcategories(slug)');
   
   if (!categories) return [];
+
+  const params = categories.flatMap((category) => {
+    if (!category.subcategories || category.subcategories.length === 0) {
+      return { slug: category.slug, subslug: '' }; // Handle categories without subcategories if necessary
+    }
+    return category.subcategories.map((sub: { slug: string }) => ({
+      slug: category.slug,
+      subslug: sub.slug,
+    }));
+  });
   
-  return categories.map((category) => ({
-    slug: category.slug,
-  }));
+  return params.filter(p => p.subslug !== ''); // Filter out categories without subslug for subcategory page
 }

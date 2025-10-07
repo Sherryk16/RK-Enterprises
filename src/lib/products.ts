@@ -1,5 +1,4 @@
 import { supabase } from './supabase';
-console.log('products.ts: Supabase client imported.'); // DEBUG LOG
 
 export type ProductInput = {
   name: string;
@@ -99,12 +98,8 @@ export async function getAllProducts(
 
   const { data: products, error, count: totalCount } = await query;
 
-  console.log('getAllProducts: Supabase raw data:', products); // CRITICAL DEBUG LOG
-  console.log('getAllProducts: Supabase raw error:', error); // CRITICAL DEBUG LOG
-  console.log('getAllProducts: Total count:', totalCount); // CRITICAL DEBUG LOG
-
   if (error) {
-    console.error('Supabase query error:', error);
+    console.error('Supabase query error:', JSON.stringify(error, null, 2));
     throw error;
   }
   return { products: products || [], totalCount: totalCount || 0 };
@@ -335,7 +330,6 @@ export async function getProductById(id: string) {
 
 // Get single product by slug
 export async function getProductBySlug(slug: string) {
-  console.log('getProductBySlug: Searching for slug:', slug); // DEBUG LOG
   const { data, error } = await supabase
     .from('products')
     .select(`
@@ -356,10 +350,9 @@ export async function getProductBySlug(slug: string) {
     .single();
 
   if (error) {
-    console.error('getProductBySlug: Supabase query error:', error); // DEBUG LOG
+    console.error('getProductBySlug: Supabase query error:', JSON.stringify(error, null, 2));
     throw error;
   }
-  console.log('getProductBySlug: Supabase response data:', data); // DEBUG LOG
   return data;
 }
 
@@ -467,102 +460,55 @@ export async function getCategoriesWithSubcategories() {
       id,
       name,
       slug,
-      category_subcategories(subcategory_id(id, name, slug))
+      subcategories(id, name, slug)
     `)
     .order('name');
 
   if (error) {
-    console.error('getCategoriesWithSubcategories: Supabase query error:', error); // DEBUG LOG
+    console.error('getCategoriesWithSubcategories: Supabase query error:', JSON.stringify(error, null, 2));
     throw error;
   }
-  console.log('getCategoriesWithSubcategories: Supabase response data:', data); // DEBUG LOG
   return data;
 }
 
 // Get subcategories that should appear under multiple categories
 export async function getSharedSubcategories() {
-  // This function used to manually define shared subcategories.
-  // To ensure consistency with CSV imports and prevent duplication, 
-  // we will now rely solely on categories and subcategories being 
-  // properly linked during the CSV import process.
-  return []; // Return an empty array to disable manual shared subcategories
+  return []; // Return an empty array as per current structure (subcategories are linked directly)
 }
 
-// Debug function to check database contents
-export async function debugDatabaseContents() {
-  try {
-    // Get all categories
-    const { data: categories, error: catError } = await supabase
-      .from('categories')
-      .select('*')
-      .order('name');
-    
-    if (catError) throw catError;
-    
-    // Get all products with their category info
-    const { data: products, error: prodError } = await supabase
-      .from('products')
-      .select(`
-        id,
-        name,
-        category_id,
-        show_in_office,
-        slug,
-        categories:category_id (
-          id,
-          name,
-          slug
-        )
-      `)
-      .order('created_at', { ascending: false });
-    
-    if (prodError) throw prodError;
-    
-    return {
-      categories: categories || [],
-      products: products || [],
-      summary: {
-        totalCategories: categories?.length || 0,
-        totalProducts: products?.length || 0,
-        officeProducts: products?.filter(p => p.show_in_office)?.length || 0,
-        productsByCategory: categories?.map(cat => ({
-          categoryName: cat.name,
-          categorySlug: cat.slug,
-          productCount: products?.filter(p => p.category_id === cat.id)?.length || 0
-        })) || []
-      }
-    };
-  } catch (error: unknown) {
-    console.error('Debug error:', error);
-    let errorMessage = 'Unknown error';
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    } else if (typeof error === 'string') {
-      errorMessage = error;
-    }
-    return { error: errorMessage };
+// Debug function to fetch all existing categories (for RLS troubleshooting)
+export async function getExistingCategoriesForDebug() {
+  const { data, error } = await supabase.from('categories').select('id, name, slug');
+  if (error) {
+    console.error('getExistingCategoriesForDebug: Error fetching categories:', JSON.stringify(error, null, 2));
+    return null;
   }
-}
-
-// Get subcategories by category
-export async function getSubcategoriesByCategory(categoryId: string) {
-  const { data, error } = await supabase
-    .from('subcategories')
-    .select(`
-      *,
-      categories:category_id (
-        id,
-        name,
-        slug
-      )
-    `)
-    .eq('category_id', categoryId)
-    .order('name');
-
-  if (error) throw error;
   return data;
 }
 
+// Debug function to fetch raw product data
+export async function getRawProductSample() {
+  const { data, error } = await supabase
+    .from('products')
+    .select(`
+      id,
+      name,
+      category_id,
+      subcategory_id,
+      show_in_office,
+      slug,
+      categories:category_id (id, name, slug)
+    `)
+    .limit(10); // Fetch a small sample
+
+  if (error) {
+    console.error('Error fetching raw product sample:', JSON.stringify(error, null, 2));
+    throw error;
+  }
+  return data;
+}
+
+// Get related products (from the same category, excluding the current product)
 export async function getRelatedProducts(categoryId: string, currentProductId: string) {
   const { data, error } = await supabase
     .from('products')

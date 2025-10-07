@@ -5,25 +5,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import ShoppingCart from './ShoppingCart';
 import HeaderSearch from './HeaderSearch'; // Import the new HeaderSearch component
-import { getCategoriesWithSubcategories, getSharedSubcategories } from '@/lib/products';
+import { getCategoriesWithSubcategories } from '@/lib/products'; // Removed getSharedSubcategories as it's no longer needed in transformCategories
 import { useCart } from '@/context/CartContext';
 import { useRouter } from 'next/navigation'; // Import useRouter
 import { simpleSlugify, StructuredCategory, StructuredSubcategory, transformCategories } from '@/lib/utils'; // Import simpleSlugify from utils
 
-interface NavSubcategory {
-  id: string;
-  name: string;
-  slug: string;
-  category_id?: string;
-}
-
-interface NavCategory {
-  id: string;
-  name: string;
-  slug: string;
-  subcategories?: NavSubcategory[];
-  category_subcategories?: { subcategory_id: NavSubcategory }[];
-}
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -40,13 +26,10 @@ const Header = () => {
     let isMounted = true;
     (async () => {
       try {
-        const [categoriesData, sharedSubcategories] = await Promise.all([
-          getCategoriesWithSubcategories(),
-          getSharedSubcategories()
-        ]);
+        const categoriesData = await getCategoriesWithSubcategories(); // No need for sharedSubcategories anymore
         
         console.log('Header: Raw categoriesData from DB:', JSON.stringify(categoriesData, null, 2)); // DEBUG LOG: Log full content
-        console.log('Header: Raw sharedSubcategories:', sharedSubcategories); // DEBUG LOG
+        console.log('Header: Raw sharedSubcategories:', categoriesData); // DEBUG LOG
 
         if (isMounted) {
           // Display all categories fetched, no manual filtering needed
@@ -79,8 +62,9 @@ const Header = () => {
           //   }
           // });
           
-          const transformed = transformCategories(categoriesData, sharedSubcategories);
+          const transformed = transformCategories(categoriesData || []);
           setNavCategories(transformed);
+          console.log('Header: Final Navigation Categories (after transform):', JSON.stringify(transformed, null, 2)); // CRITICAL DEBUG LOG
           console.log('Final Navigation Categories (with shared subcategories):', transformed); // TEMP DEBUG LOG
         }
       } catch (e: unknown) {
@@ -238,13 +222,14 @@ const Header = () => {
         <div className="container mx-auto px-4">
           <div className="flex flex-col lg:flex-row items-center justify-between py-3 space-y-2 lg:space-y-0">
             <div className="flex items-center space-x-6">
+              
               {navCategories.map((category: StructuredCategory) => {
                 const catSlug = category.slug || simpleSlugify(category.name || '');
                 return (
                 <div key={category.id} className="relative group">
                   <Link
                     href={`/categories/${catSlug}`}
-                    className="text-white hover:text-gray-200 font-medium text-sm flex items-center space-x-1" // Reverted styling
+                    className="text-white hover:text-gray-200 font-medium text-sm flex items-center space-x-1" 
                   >
                     <span>{category.name.charAt(0).toUpperCase() + category.name.slice(1)}</span>
                     {Array.isArray(category.subcategories) && category.subcategories.length > 0 && (
@@ -351,3 +336,5 @@ const Header = () => {
 };
 
 export default Header;
+
+

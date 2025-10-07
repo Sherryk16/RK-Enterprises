@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-// Removed import slugify from 'slugify';
 import csv from 'csv-parser';
-import { Readable } from 'stream'; // Import Readable from 'stream'
-import { cleanHtml, simpleSlugify, normalizeCategoryName } from '@/lib/utils'; // Import utility functions
+import { Readable } from 'stream';
+import { cleanHtml, simpleSlugify, normalizeCategoryName } from '@/lib/utils';
 
 interface CSVRow {
   'Name': string;
@@ -13,7 +12,16 @@ interface CSVRow {
   'Sale price': string;
   'Images': string;
   'Is featured?': string;
-  // Add other expected CSV headers here
+  'Detailed Description'?: string;
+  'Colors'?: string;
+  'Is molded?'?: string;
+  'Is CEO Chair?'?: string;
+  'Is Gaming Chair?'?: string;
+  'Is Dining Chair?'?: string;
+  'Is Visitor Sofa?'?: string;
+  'Is Study Chair?'?: string;
+  'Is Outdoor Furniture?'?: string;
+  'Is Folding Furniture?'?: string;
 }
 
 interface ProductToInsert {
@@ -23,7 +31,8 @@ interface ProductToInsert {
   original_price?: number | null;
   images: string[];
   description: string;
-  detailed_description: string;
+  detailed_description?: string | null;
+  colors: string[];
   is_featured: boolean;
   show_in_office: boolean;
   category_id: string;
@@ -39,11 +48,8 @@ interface ProductToInsert {
 }
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Use service role key for server-side
-const SUPABASE_BUCKET_NAME = 'product-images'; // Define your Supabase bucket name here
-
-console.log('Supabase URL (from env): ', supabaseUrl ? 'Loaded' : 'NOT LOADED', supabaseUrl);
-console.log('Supabase Service Role Key (from env): ', supabaseServiceRoleKey ? 'Loaded' : 'NOT LOADED', 'Length:', supabaseServiceRoleKey?.length);
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY; 
+const SUPABASE_BUCKET_NAME = 'product-images';
 
 if (!supabaseUrl) {
   console.error("ERROR: NEXT_PUBLIC_SUPABASE_URL is not set.");
@@ -54,218 +60,253 @@ if (!supabaseServiceRoleKey) {
   throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set.");
 }
 
-// Initialize Supabase client for server-side operations with the Service Role Key
-// This key bypasses Row Level Security and has full privileges.
 const supabase = createClient(supabaseUrl!, supabaseServiceRoleKey!, {
-  auth: { persistSession: false }, // No session persistence needed for a service role key
+  auth: { persistSession: false },
 });
 
-// Helper to get or create a category
 async function getOrCreateCategory(name: string) {
-  const cleanedName = normalizeCategoryName(name); // Use new normalization for category name
-  console.log(`getOrCreateCategory: Processing category name: '${name}', Normalized: '${cleanedName}'`); // DEBUG LOG
-  if (!cleanedName) return null; // Skip if name is empty after cleaning
+  const cleanedName = normalizeCategoryName(name);
+  console.log(`[CSV Import] Attempting to get or create category: '${name}' (Normalized: '${cleanedName}')`); // DEBUG
+  if (!cleanedName) return null;
   const slug = simpleSlugify(cleanedName);
   const { data: category, error } = await supabase.from('categories').select('*').eq('slug', slug).single();
 
-  if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
-    console.error(`Error fetching category ${cleanedName}:`, error);
+  if (error && error.code !== 'PGRST116') {
+    console.error(`[CSV Import] Error fetching category ${cleanedName}:`, error);
     throw new Error(`Error fetching category ${cleanedName}: ${error.message}`);
   }
 
   if (!category) {
+    console.log(`[CSV Import] Category '${cleanedName}' not found, creating...`); // DEBUG
     const { data: newCategory, error: insertError } = await supabase.from('categories').insert({ name: cleanedName, slug }).select().single();
     if (insertError) {
-      console.error(`Error creating category ${cleanedName}:`, insertError);
-      throw new Error(`Error creating category ${cleanedName}: ${insertError.message}`);
+      console.warn(`[CSV Import] Error creating category '${cleanedName}':`, insertError.message);
+      return null;
     }
+    console.log(`[CSV Import] Successfully created category: '${newCategory?.name}' (ID: ${newCategory?.id})`); // DEBUG
     return newCategory;
   }
+  console.log(`[CSV Import] Found existing category: '${category.name}' (ID: ${category.id})`); // DEBUG
   return category;
 }
 
-// Helper to get or create a subcategory
 async function getOrCreateSubcategory(name: string, categoryId: string) {
-  const cleanedName = normalizeCategoryName(name); // Use new normalization for subcategory name
-  console.log(`getOrCreateSubcategory: Processing subcategory name: '${name}', Normalized: '${cleanedName}'`); // DEBUG LOG
-  if (!cleanedName) return null; // Skip if name is empty after cleaning
+  const cleanedName = normalizeCategoryName(name);
+  console.log(`[CSV Import] Attempting to get or create subcategory: '${name}' (Normalized: '${cleanedName}') for category ID: ${categoryId}`); // DEBUG
+  if (!cleanedName) return null;
   const slug = simpleSlugify(cleanedName);
   const { data: subcategory, error } = await supabase.from('subcategories').select('*').eq('slug', slug).single();
 
   if (error && error.code !== 'PGRST116') {
-    console.error(`Error fetching subcategory ${cleanedName}:`, error);
+    console.error(`[CSV Import] Error fetching subcategory ${cleanedName}:`, error);
     throw new Error(`Error fetching subcategory ${cleanedName}: ${error.message}`);
   }
 
   if (!subcategory) {
+    console.log(`[CSV Import] Subcategory '${cleanedName}' not found, creating...`); // DEBUG
     const { data: newSubcategory, error: insertError } = await supabase.from('subcategories').insert({ name: cleanedName, slug, category_id: categoryId }).select().single();
     if (insertError) {
-      console.error(`Error creating subcategory ${cleanedName}:`, insertError);
-      throw new Error(`Error creating subcategory ${cleanedName}: ${insertError.message}`);
+      console.warn(`[CSV Import] Error creating subcategory '${cleanedName}':`, insertError.message);
+      return null;
     }
+    console.log(`[CSV Import] Successfully created subcategory: '${newSubcategory?.name}' (ID: ${newSubcategory?.id})`); // DEBUG
     return newSubcategory;
   }
+  console.log(`[CSV Import] Found existing subcategory: '${subcategory.name}' (ID: ${subcategory.id})`); // DEBUG
   return subcategory;
 }
 
-async function uploadImageToSupabase(imageUrl: string, productName: string): Promise<string | null> {
-  try {
-    const response = await fetch(imageUrl);
-    if (!response.ok) {
-      console.warn(`Failed to download image from URL: ${imageUrl} for product: ${productName}. Status: ${response.status}`);
-      return null; // Return null if download fails
-    }
+// Utility to extract base filename (without extension and common trailing identifiers)
+function getBaseFilenameForComparison(filename: string): string {
+  const parts = filename.split('.');
+  if (parts.length > 1) {
+    parts.pop(); // Remove extension
+  }
+  let base = parts.join('.');
+  // Remove common trailing slugs/timestamps/model numbers (more aggressive)
+  base = base.replace(/-\d{6,}$/, ''); // remove trailing -timestamp (e.g., -1759534871649)
+  base = base.replace(/-(v\d+)$/, ''); // remove trailing -vX (e.g., -v4)
+  base = base.replace(/-(copy)$/, ''); // remove trailing -copy
+  base = base.replace(/-(model-rk-\d{2,}-\d{3})$/, ''); // remove specific model pattern like -model-rk-350-1759534871649
+  base = base.replace(/-\d{2,}-\d{3,}$/, ''); // more general number sequences
+  base = base.replace(/-rk-\d{2,3}$/, ''); // remove -rk-XXX
+  base = base.replace(/-rk-enterprise(s)?$/, ''); // remove -rk-enterprise or -rk-enterprises
+  return simpleSlugify(base);
+}
 
-    const arrayBuffer = await response.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+async function getImagePublicUrlFromBucket(productName: string, imageFileNameHintFromCSV: string): Promise<string | null> {
+  console.log(`[CSV Import] Attempting fuzzy match for product: '${productName}', with CSV hint: '${imageFileNameHintFromCSV}'`); // DEBUG
+  if (!productName) return null;
 
-    // Determine file extension from URL or content type
-    const contentType = response.headers.get('content-type');
-    let fileExt = '.jpg'; // Default to jpg
-    if (contentType) {
-      if (contentType.includes('png')) fileExt = '.png';
-      else if (contentType.includes('jpeg')) fileExt = '.jpeg';
-      else if (contentType.includes('gif')) fileExt = '.gif';
-      else if (contentType.includes('webp')) fileExt = '.webp';
+  const normalizedProductName = simpleSlugify(productName);
+  console.log(`[CSV Import] Normalized Product Name for comparison: '${normalizedProductName}'`); // DEBUG
+
+  // List all files in the 'products/' directory of the bucket
+  const { data: listData, error: listError } = await supabase.storage.from(SUPABASE_BUCKET_NAME).list('products');
+
+  if (listError) {
+    console.error(`[CSV Import] Error listing files in bucket '${SUPABASE_BUCKET_NAME}/products/':`, listError);
+    return null;
+  }
+
+  if (!listData || listData.length === 0) {
+    console.warn(`[CSV Import] No files found in bucket '${SUPABASE_BUCKET_NAME}/products/'.`);
+    return null;
+  }
+
+  let bestMatchFileName: string | null = null;
+  let highestSimilarityScore = 0;
+
+  for (const bucketFile of listData) {
+    const normalizedBucketFilename = getBaseFilenameForComparison(bucketFile.name);
+    
+    // Simple fuzzy matching: check if product name is a substring of filename, or vice versa
+    // Prioritize longer common substrings or exact matches after normalization
+    let currentSimilarity = 0;
+    if (normalizedBucketFilename.includes(normalizedProductName)) {
+      currentSimilarity = normalizedProductName.length; // CSV name is contained in bucket name
+    } else if (normalizedProductName.includes(normalizedBucketFilename)) {
+      currentSimilarity = normalizedBucketFilename.length; // Bucket name is contained in CSV name
     }
     
-    // Create a unique filename
-    const fileName = `${simpleSlugify(productName)}-${Date.now()}${fileExt}`;
-    const filePath = `products/${fileName}`;
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { data, error } = await supabase.storage
-      .from(SUPABASE_BUCKET_NAME)
-      .upload(filePath, buffer, {
-        contentType: contentType || 'application/octet-stream',
-        upsert: false, // Prevents overwriting existing files with the same name
-      });
-
-    if (error) {
-      console.error(`Error uploading image to Supabase Storage for product: ${productName}, URL: ${imageUrl}`, error);
-      return null; // Return null if upload fails
+    // Further boost for closer matches or if CSV hint is also a good match
+    if (normalizedBucketFilename === normalizedProductName) {
+      currentSimilarity += normalizedProductName.length * 2; // Exact match after base processing
     }
 
-    const { data: { publicUrl } } = supabase.storage.from(SUPABASE_BUCKET_NAME).getPublicUrl(filePath);
-    console.log(`Successfully uploaded image for product: ${productName}. Public URL: ${publicUrl}`);
-    return publicUrl;
-  } catch (error) {
-    console.error(`Caught error in uploadImageToSupabase for product: ${productName}, URL: ${imageUrl}`, error);
+    // Also consider the imageFileNameHintFromCSV if it's provided and is a strong match
+    if (imageFileNameHintFromCSV) {
+      const normalizedHint = getBaseFilenameForComparison(imageFileNameHintFromCSV);
+      if (normalizedBucketFilename.includes(normalizedHint)) {
+        currentSimilarity += normalizedHint.length; // Boost if hint matches bucket filename
+      }
+    }
+
+    if (currentSimilarity > highestSimilarityScore) {
+      highestSimilarityScore = currentSimilarity;
+      bestMatchFileName = bucketFile.name;
+    }
+    console.log(`[CSV Import] Comparing product '${normalizedProductName}' with bucket file '${bucketFile.name}' (normalized: '${normalizedBucketFilename}'). Score: ${currentSimilarity}`); // DEBUG
+  }
+
+  if (bestMatchFileName) {
+    const publicUrl = supabase.storage.from(SUPABASE_BUCKET_NAME).getPublicUrl(`products/${bestMatchFileName}`).data?.publicUrl;
+    if (publicUrl) {
+      console.log(`[CSV Import] BEST MATCH found for product '${productName}': '${bestMatchFileName}'. Public URL: ${publicUrl}`); // DEBUG
+      return publicUrl;
+    } else {
+      console.warn(`[CSV Import] Could not get public URL for best matched file '${bestMatchFileName}'.`); // DEBUG
+      return null;
+    }
+  } else {
+    console.warn(`[CSV Import] No strong fuzzy match found in bucket for product: '${productName}'.`); // DEBUG
     return null;
   }
 }
 
-// Helper to link category and subcategory
-async function linkCategoryToSubcategory(categoryId: string, subcategoryId: string) {
-  const { data, error } = await supabase.from('category_subcategories')
-    .select('*')
-    .eq('category_id', categoryId)
-    .eq('subcategory_id', subcategoryId)
-    .single();
+// This link function is probably not needed anymore given the direct subcategory_id in subcategories table
+// async function linkCategoryToSubcategory(categoryId: string, subcategoryId: string) {
+//   const { data, error } = await supabase.from('category_subcategories')
+//     .select('*')
+//     .eq('category_id', categoryId)
+//     .eq('subcategory_id', subcategoryId)
+//     .single();
 
-  if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
-    console.error(`Error checking category-subcategory link ${categoryId}-${subcategoryId}:`, error);
-    throw new Error(`Error checking link: ${error.message}`);
-  }
+//   if (error && error.code !== 'PGRST116') {
+//     console.error(`Error checking category-subcategory link ${categoryId}-${subcategoryId}:`, error);
+//     throw new Error(`Error checking link: ${error.message}`);
+//   }
 
-  if (!data) {
-    const { error: insertError } = await supabase.from('category_subcategories').insert({
-      category_id: categoryId,
-      subcategory_id: subcategoryId,
-    });
-    if (insertError) {
-      console.error(`Error linking category ${categoryId} to subcategory ${subcategoryId}:`, insertError);
-      throw new Error(`Error linking: ${insertError.message}`);
-    }
-  }
-}
+//   if (!data) {
+//     const { error: insertError } = await supabase.from('category_subcategories').insert({
+//       category_id: categoryId,
+//       subcategory_id: subcategoryId,
+//     });
+//     if (insertError) {
+//       console.error(`Error linking category ${categoryId} to subcategory ${subcategoryId}:`, insertError);
+//       throw new Error(`Error linking: ${insertError.message}`);
+//     }
+//   }
+// }
 
 export async function POST(request: Request) {
+  console.log('[CSV Import] Starting product import process.'); // DEBUG
   try {
-    // Diagnostic query to check table visibility
-    const { error: diagError } = await supabase.from('category_subcategories').select('category_id').limit(1);
-    if (diagError) {
-      console.error('Diagnostic query error for category_subcategories:', diagError);
-      throw new Error(`Diagnostic table check failed: ${diagError.message}`);
-    }
-    console.log('Diagnostic query for category_subcategories successful.');
-
     const formData = await request.formData();
     const file = formData.get('csvFile') as File | null;
 
     if (!file) {
+      console.warn('[CSV Import] No CSV file uploaded.'); // DEBUG
       return NextResponse.json({ error: 'No CSV file uploaded.' }, { status: 400 });
     }
 
+    console.log(`[CSV Import] Received file: '${file.name}' (Type: '${file.type}', Size: ${file.size} bytes)`); // DEBUG
     const fileContent = await file.text();
     const results: CSVRow[] = await new Promise((resolve, reject) => {
       const products: CSVRow[] = [];
       Readable.from(fileContent)
         .pipe(csv())
         .on('data', (data: CSVRow) => products.push(data))
-        .on('end', () => resolve(products))
-        .on('error', (error) => reject(error));
+        .on('end', () => {
+          console.log(`[CSV Import] CSV parsing complete. Found ${products.length} rows.`); // DEBUG
+          resolve(products);
+        })
+        .on('error', (error) => {
+          console.error('[CSV Import] Error parsing CSV:', error);
+          reject(error);
+        });
     });
 
     if (results.length === 0) {
+      console.warn('[CSV Import] Empty or unparseable CSV file after parsing.'); // DEBUG
       return NextResponse.json({ error: 'Empty or unparseable CSV file.' }, { status: 400 });
     }
 
     const productsToInsert: ProductToInsert[] = [];
-    const processedSlugs = new Set<string>(); // Keep track of slugs in the current batch
+    const processedSlugs = new Set<string>();
+    const errors: string[] = [];
 
     for (const row of results) {
-      console.log(`Processing row:`, row);
-
+      console.log('[CSV Import] Processing row:', row); // DEBUG: Log each row being processed
       let primaryCategoryId: string | null = null;
       let primarySubcategoryId: string | null = null;
 
-      const originalProductName = row['Name'] || '';
-      const productName = cleanHtml(originalProductName);
-      console.log(`Original Product Name: '${originalProductName}', Cleaned: '${productName}'`);
-
-      const originalCategoriesStr = row['Categories'] || '';
-      const categoriesStr = cleanHtml(originalCategoriesStr);
-      console.log(`Original Categories String: '${originalCategoriesStr}', Cleaned: '${categoriesStr}'`);
-
-      const originalDescription = row['Description'] || '';
-      const cleanedDescription = cleanHtml(originalDescription);
-      console.log(`Original Description: '${originalDescription}', Cleaned: '${cleanedDescription}'`);
+      const productName = cleanHtml(row['Name'] || '');
+      const categoriesStr = cleanHtml(row['Categories'] || '');
+      const cleanedDescription = cleanHtml(row['Description'] || '');
+      const cleanedDetailedDescription = cleanHtml(row['Detailed Description'] || '');
+      const cleanedColors = (row['Colors'] || '').split(',').map(color => color.trim()).filter(color => color);
 
       if (!productName || productName.trim() === '') {
-        console.warn(`Skipping row due to missing or empty product name in row:`, row);
+        errors.push(`Skipping row due to missing or empty product name in row: ${JSON.stringify(row)}`);
+        console.warn(`[CSV Import] ${errors[errors.length - 1]}`); // DEBUG
         continue; 
       }
 
-      // Validate Price: Ensure at least one valid price is present
       const regularPrice = parseFloat(row['Regular price']);
       const salePrice = parseFloat(row['Sale price']);
       if ((isNaN(regularPrice) || regularPrice <= 0) && (isNaN(salePrice) || salePrice <= 0)) {
-        console.warn(`Skipping row due to missing or invalid price for product '${productName}' in row:`, row);
+        errors.push(`Skipping row due to missing or invalid price for product '${productName}' in row: ${JSON.stringify(row)}`);
+        console.warn(`[CSV Import] ${errors[errors.length - 1]}`); // DEBUG
         continue;
       }
 
-      // Download and upload images to Supabase Storage
-      const originalImageUrls = row['Images'] ? row['Images'].split(',').map((img) => img.trim()).filter((img) => img) : [];
+      const imageFileNames = (row['Images'] || '').split(',').map(img => img.trim()).filter(img => img);
       const uploadedImageUrls: string[] = [];
 
-      for (const imageUrl of originalImageUrls) {
-        if (imageUrl) {
-          const uploadedUrl = await uploadImageToSupabase(imageUrl, productName);
-          if (uploadedUrl) {
-            uploadedImageUrls.push(uploadedUrl);
+      // Use product name as the primary key for image matching
+      for (const imageFileNameHint of imageFileNames) {
+        if (imageFileNameHint) {
+          const publicUrl = await getImagePublicUrlFromBucket(productName, imageFileNameHint); // Pass product name and image hint
+          if (publicUrl) {
+            uploadedImageUrls.push(publicUrl);
           } else {
-            console.warn(`Could not upload image from URL: ${imageUrl}. Using placeholder for product: ${productName}`);
-            // Optionally, add a placeholder image if the upload fails for a specific image
-            // uploadedImageUrls.push("/placeholder-product.jpg"); 
+            errors.push(`Image not found or public URL unavailable for product '${productName}' with hint '${imageFileNameHint}'.`);
+            console.warn(`[CSV Import] ${errors[errors.length - 1]}`); // DEBUG
           }
         }
       }
-
-      if (uploadedImageUrls.length === 0) {
-        console.warn(`Skipping row due to no valid image URLs after upload attempt for product '${productName}' in row:`, row);
-        continue;
-      }
+      console.log(`[CSV Import] Product '${productName}' processed images:`, uploadedImageUrls); // DEBUG
 
       if (categoriesStr) {
         const categoryPaths = categoriesStr.split('|');
@@ -278,55 +319,55 @@ export async function POST(request: Request) {
               if (!primaryCategoryId) primaryCategoryId = category.id;
 
               if (parts.length > 1) {
-                const subcategoryNames = parts[1].split(',').map(s => s.trim()).filter(s => s); // Split by comma and trim
+                const subcategoryNames = parts[1].split(',').map(s => s.trim()).filter(s => s);
                 for (const subcategoryName of subcategoryNames) {
                   const subcategory = await getOrCreateSubcategory(subcategoryName, category.id);
                   if (subcategory) {
                     if (!primarySubcategoryId) primarySubcategoryId = subcategory.id;
-                    await linkCategoryToSubcategory(category.id, subcategory.id);
+                    // await linkCategoryToSubcategory(category.id, subcategory.id);
+                  } else {
+                    errors.push(`Could not create/find subcategory for name: ${subcategoryName} under category: ${categoryName} in row: ${JSON.stringify(row)}.`);
+                    console.warn(`[CSV Import] ${errors[errors.length - 1]}`); // DEBUG
                   }
                 }
               }
             } else {
-                console.warn(`Could not create/find category for name: ${categoryName} in row:`, row, `. Skipping related subcategory/product linkage.`);
+              errors.push(`Could not create/find category for name: ${categoryName} in row: ${JSON.stringify(row)}. Skipping related subcategory/product linkage.`);
+              console.warn(`[CSV Import] ${errors[errors.length - 1]}`); // DEBUG
             }
           }
         }
       }
+      console.log(`[CSV Import] Product '${productName}' primaryCategoryId: ${primaryCategoryId}, primarySubcategoryId: ${primarySubcategoryId}`); // DEBUG
 
-      // If primaryCategoryId is still null after parsing, handle the constraint violation
-      // This means the product might not have a valid category assigned from the CSV.
       if (!primaryCategoryId) {
-          console.warn(`Product '${productName}' from row:`, row, `has no valid primary category. Skipping product insertion.`);
-          continue; // Skip inserting this product if no primary category could be determined
+        errors.push(`Product '${productName}' from row: ${JSON.stringify(row)} has no valid primary category. Skipping product insertion.`);
+        console.warn(`[CSV Import] ${errors[errors.length - 1]}`); // DEBUG
+        continue;
       }
 
       const baseSlug = simpleSlugify(productName || `product-${Math.random().toString(36).substring(7)}`);
       let productSlug = baseSlug;
       let suffix = 1;
 
-      // Loop to ensure slug is unique across database and current batch
       while (true) {
         const { data: existingProductsInDb, error: slugCheckError } = await supabase.from('products').select('slug').eq('slug', productSlug);
         if (slugCheckError) {
-          console.error(`Error checking slug uniqueness for ${productSlug}:`, slugCheckError);
-          // Fallback to a truly random slug if DB check fails
+          console.error(`[CSV Import] Error checking slug uniqueness for ${productSlug}:`, slugCheckError);
           productSlug = `${baseSlug}-${Math.random().toString(36).substring(2, 7)}`;
-          break; // Exit loop, will try to insert with this random slug
+          break;
         }
 
         if (existingProductsInDb && existingProductsInDb.length > 0 || processedSlugs.has(productSlug)) {
-          // Slug exists in DB or current batch, append a suffix
           productSlug = `${baseSlug}-${suffix}`;
           suffix++;
         } else {
-          // Slug is unique
           break;
         }
       }
-      processedSlugs.add(productSlug); // Add the final unique slug to our set
+      processedSlugs.add(productSlug);
+      console.log(`[CSV Import] Product '${productName}' final slug: '${productSlug}'`); // DEBUG
 
-      // Prepare product data for insertion
       const product_data: ProductToInsert = {
           name: productName,
           slug: productSlug,
@@ -334,38 +375,44 @@ export async function POST(request: Request) {
           original_price: parseFloat(row['Regular price']) || 0,
           images: uploadedImageUrls,
           description: cleanedDescription,
-          detailed_description: cleanedDescription,
+        detailed_description: cleanedDetailedDescription || null,
+        colors: cleanedColors,
           is_featured: row['Is featured?'] === '1',
           show_in_office: ((categoriesStr || '').toLowerCase().includes('office furniture') || (categoriesStr || '').toLowerCase().includes('visitor chair')),
           category_id: primaryCategoryId,
           subcategory_id: primarySubcategoryId,
-          is_molded: false,
-          is_ceo_chair: false,
-          is_gaming_chair: false,
-          is_dining_chair: false,
-          is_visitor_sofa: false,
-          is_study_chair: false,
-          is_outdoor_furniture: false,
-          is_folding_furniture: false,
+        is_molded: row['Is molded?'] === '1',
+        is_ceo_chair: row['Is CEO Chair?'] === '1',
+        is_gaming_chair: row['Is Gaming Chair?'] === '1',
+        is_dining_chair: row['Is Dining Chair?'] === '1',
+        is_visitor_sofa: row['Is Visitor Sofa?'] === '1',
+        is_study_chair: row['Is Study Chair?'] === '1',
+        is_outdoor_furniture: row['Is Outdoor Furniture?'] === '1',
+        is_folding_furniture: row['Is Folding Furniture?'] === '1',
       };
-
-      console.log('Product Data before Supabase insertion:', product_data); // FINAL DEBUG LOG
+      console.log(`[CSV Import] Product data prepared for insertion for '${productName}':`, JSON.stringify(product_data, null, 2)); // DEBUG
 
       productsToInsert.push(product_data);
     }
 
     if (productsToInsert.length > 0) {
+      console.log(`[CSV Import] Attempting to insert ${productsToInsert.length} products into Supabase.`); // DEBUG
       const { error: insertProductsError } = await supabase.from('products').insert(productsToInsert);
       if (insertProductsError) {
-        console.error('Error inserting products:', insertProductsError);
-        return NextResponse.json({ error: 'Failed to insert products.', details: insertProductsError.message }, { status: 500 });
+        const errorMsg = `Error inserting products into Supabase: ${insertProductsError.message}`; 
+        console.error(`[CSV Import] ${errorMsg}`); // DEBUG
+        errors.push(errorMsg);
+        return NextResponse.json({ message: `Successfully imported ${productsToInsert.length} products with some errors.`, errors: errors }, { status: 500 });
       }
+      console.log(`[CSV Import] Successfully inserted ${productsToInsert.length} products.`); // DEBUG
+    } else {
+      console.warn('[CSV Import] No products to insert after processing CSV.'); // DEBUG
     }
 
-    return NextResponse.json({ message: `Successfully imported ${productsToInsert.length} products.` });
+    return NextResponse.json({ message: `Successfully imported ${productsToInsert.length} products.`, errors: errors });
 
   } catch (error: unknown) {
-    console.error('Error processing CSV upload:', error);
+    console.error('[CSV Import] Uncaught error during CSV upload processing:', error);
     let errorMessage = 'Internal Server Error';
     if (error instanceof Error) {
       errorMessage = error.message;
@@ -375,4 +422,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+
+
 

@@ -4,9 +4,10 @@ import CategoryCard from '@/components/CategoryCard';
 import ProductCard from '@/components/ProductCard';
 import Image from 'next/image';
 import Link from 'next/link';
-import { getAllCategories, getFeaturedProducts } from '@/lib/products';
+import { getCategoriesWithSubcategories, getFeaturedProducts } from '@/lib/products';
 import DynamicCustomerReviewsWrapper from '@/components/DynamicCustomerReviewsWrapper'; // Import the new wrapper
 import SEOContent from '@/components/SEOContent'; // Import SEO content component
+import { StructuredCategory, transformCategories } from '@/lib/utils'; // Import necessary types and transformCategories
 
 export const metadata: Metadata = {
   title: 'RK Enterprise - #1 Premium Imported Furniture Store in Pakistan | Office & Home Furniture',
@@ -59,10 +60,7 @@ export const metadata: Metadata = {
   },
 };
 
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
+interface HomepageCategory extends StructuredCategory {
   description?: string;
   href?: string;
   itemCount?: number;
@@ -85,13 +83,11 @@ interface Product {
 }
 
 export default async function Home() {
-  // Fetch data from database
-  let categories: Category[] = [];
+  let categories: HomepageCategory[] = [];
   let featuredProducts: Product[] = [];
-  let displayCategories: Category[] = []; // Declare with let and initialize
-  let displayProducts: Product[] = [];   // Declare with let and initialize
+  let displayCategories: HomepageCategory[] = [];
+  let displayProducts: Product[] = [];
 
-  // Structured data for homepage
   const homepageStructuredData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -121,28 +117,25 @@ export default async function Home() {
   };
 
   try {
-    const [categoriesData, productsData] = await Promise.all([
-      getAllCategories(),
-      getFeaturedProducts()
+    const [categoriesRawData, productsData] = await Promise.all([
+      getCategoriesWithSubcategories(),
+      getFeaturedProducts(),
     ]);
 
-    categories = (categoriesData as Category[]) || [];
+    const transformedCategories = transformCategories(categoriesRawData || []); // Pass only one argument
+    categories = transformedCategories;
     featuredProducts = (productsData as Product[]) || [];
 
     displayCategories = categories;
     displayProducts = featuredProducts;
 
-    console.log('Home Page: Fetched categoriesData:', categoriesData); // DEBUG
-    console.log('Home Page: Displaying categories:', displayCategories); // DEBUG
   } catch (error: unknown) {
     console.error('Error fetching data:', error);
     displayCategories = [];
     displayProducts = [];
   }
 
-  // Debug: Log the first product to see what data we have
   if (displayProducts.length > 0) {
-    console.log('First product data:', displayProducts[0]);
   }
 
   return (
@@ -169,17 +162,17 @@ export default async function Home() {
             </header>
             
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
-              {displayCategories.map((category: Category) => {
+              {displayCategories.map((category: HomepageCategory) => {
                 const getCategoryImage = (categoryName: string) => {
                   const imageMap: { [key: string]: string } = {
-                    'office furniture': '/office.png',
-                    'dining furniture': '/dining.png',
-                    'visitor bench': '/visitorsbench.png',
-                    'study chair': '/study.png',
+                    'office range': '/office.png',
+                    'dining range': '/dining.png',
+                    'waiting benches range': '/visitorsbench.png',
+                    'study range': '/study.png',
                     'outdoor range': '/outdoor.png',
                     'folding range': '/folding.png',
-                    'molded furniture': '/molded.png',
-                    'craft chair upvc': '/craft.png'
+                    'molded range': '/molded.png',
+                    // 'craft chair upvc': '/craft.png' // Not directly a top-level category in new structure
                   };
                   const normalizedCategoryName = categoryName.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
                   return imageMap[normalizedCategoryName] || '/placeholder-category.jpg';
@@ -187,11 +180,11 @@ export default async function Home() {
 
                 return (
                 <CategoryCard
-                    key={category.id || category.name}
+                    key={category.id}
                     title={category.name}
                   description={category.description || ''}
                     href={category.href || `/categories/${category.slug}`}
-                    itemCount={category.itemCount || 0}
+                    itemCount={category.subcategories.length || 0} // Display subcategory count
                     icon={category.icon || "🪑"}
                     image={getCategoryImage(category.name)}
                   />
@@ -258,7 +251,7 @@ export default async function Home() {
                   name={product.name}
                   price={product.price}
                     originalPrice={product.original_price ?? undefined}
-                    category={product.categories?.name || product.category} // Assuming product.category is a string fallback
+                    category={product.categories?.name || product.category} 
                     slug={product.slug}
                     rating={product.rating || 4.5}
                     reviews={product.reviews || 0}
