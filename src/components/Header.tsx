@@ -8,6 +8,7 @@ import HeaderSearch from './HeaderSearch'; // Import the new HeaderSearch compon
 import { getCategoriesWithSubcategories } from '@/lib/products'; // Removed getSharedSubcategories as it's no longer needed in transformCategories
 import { useCart } from '@/context/CartContext';
 import { useRouter } from 'next/navigation'; // Import useRouter
+import { usePathname } from 'next/navigation'; // Import usePathname
 import { simpleSlugify, StructuredCategory, StructuredSubcategory, transformCategories } from '@/lib/utils'; // Import simpleSlugify from utils
 
 
@@ -21,6 +22,19 @@ const Header = () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter(); // Initialize useRouter
   // Removed local slugify as simpleSlugify is imported from utils
+
+  const handleLinkClick = (href: string) => {
+    setIsMenuOpen(false);
+    router.push(href);
+  };
+
+  const pathname = usePathname(); // Initialize usePathname
+
+  useEffect(() => {
+    setIsMenuOpen(false); // Close menu whenever pathname changes
+  }, [pathname]);
+
+  console.log('isMenuOpen:', isMenuOpen); // Debug log for menu state
 
   useEffect(() => {
     let isMounted = true;
@@ -277,16 +291,16 @@ const Header = () => {
         <div className="lg:hidden bg-white border-t shadow-lg">
           <div className="container mx-auto px-4 py-4">
             <nav className="flex flex-col space-y-4">
-              <Link href="/" className="text-gray-700 hover:text-amber-600 font-medium py-2">
+              <Link href="/" onClick={() => handleLinkClick('/')} className="text-gray-700 hover:text-amber-600 font-medium py-2">
                 Home
               </Link>
-              <Link href="/shop" className="text-gray-700 hover:text-amber-600 font-medium py-2">
+              <Link href="/shop" onClick={() => handleLinkClick('/shop')} className="text-gray-700 hover:text-amber-600 font-medium py-2">
                 Shop
               </Link>
-              <Link href="/about" className="text-gray-700 hover:text-amber-600 font-medium py-2">
+              <Link href="/about" onClick={() => handleLinkClick('/about')} className="text-gray-700 hover:text-amber-600 font-medium py-2">
                 About
               </Link>
-              <Link href="/contact" className="text-gray-700 hover:text-amber-600 font-medium py-2">
+              <Link href="/contact" onClick={() => handleLinkClick('/contact')} className="text-gray-700 hover:text-amber-600 font-medium py-2">
                 Contact
               </Link>
               <div className="border-t pt-4">
@@ -298,6 +312,7 @@ const Header = () => {
                     <div key={category.id} className="space-y-2">
                       <Link
                         href={`/categories/${catSlug}`}
+                        onClick={() => handleLinkClick(`/categories/${catSlug}`)}
                         className="text-sm font-medium text-gray-800 hover:text-amber-600 block"
                       >
                         {category.name}
@@ -311,6 +326,7 @@ const Header = () => {
                           <Link
                               key={sub.id}
                               href={`/categories/${catSlug}/${subSlug}`}
+                              onClick={() => handleLinkClick(`/categories/${catSlug}/${subSlug}`)}
                             className="text-xs text-gray-600 hover:text-amber-600 block py-1"
                           >
                               {sub.name}
