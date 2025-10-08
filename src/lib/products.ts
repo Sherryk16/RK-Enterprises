@@ -142,7 +142,20 @@ export async function getProductsByCategory(categorySlug: string) {
   if (categoryError) throw categoryError;
   if (!category) return [];
 
-  // Then get products by category ID
+  // Fetch all subcategories for this category
+  const { data: subcategories, error: subcategoryError } = await supabase
+    .from('subcategories')
+    .select('id')
+    .eq('category_id', category.id);
+
+  if (subcategoryError) throw subcategoryError;
+
+  const relevantIds = [category.id];
+  if (subcategories) {
+    relevantIds.push(...subcategories.map(sub => sub.id));
+  }
+
+  // Then get products by category ID OR subcategory ID
   const { data, error } = await supabase
     .from('products')
     .select(`
@@ -159,7 +172,7 @@ export async function getProductsByCategory(categorySlug: string) {
         slug
       )
     `)
-    .eq('category_id', category.id)
+    .in('category_id', relevantIds)
     .order('created_at', { ascending: false });
 
   if (error) throw error;

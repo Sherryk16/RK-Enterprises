@@ -59,7 +59,7 @@ export default async function CategoryPage({ params: rawParams }: CategoryPagePr
     console.log('Category found by getCategoryBySlug:', category);
     console.log('Initial products fetched by getProductsByCategory:', products.length);
 
-    // If this is Office Furniture, add visitor chairs and office products
+    // Removed commented-out logic for fetching additional products, as getProductsByCategory now handles subcategories
     // if (category && (category.name?.toLowerCase().includes('office') || category.slug?.includes('office'))) {
     //   console.log('Detected Office Furniture category (normal case), fetching additional products...');
       
@@ -148,6 +148,7 @@ export default async function CategoryPage({ params: rawParams }: CategoryPagePr
       products = data || [];
       console.log('Products after fallback:', products.length);
       
+      // Removed commented-out logic for fetching additional products, as getProductsByCategory now handles subcategories
       // if (category.name?.toLowerCase().includes('office') || category.slug?.includes('office')) {
       //   console.log('Detected Office Furniture category, fetching additional products...');
         
