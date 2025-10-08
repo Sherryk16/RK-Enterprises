@@ -1,16 +1,34 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
+import { useState, useEffect } from 'react';
+import { getAllCategories } from '@/lib/products';
+import { simpleSlugify } from '@/lib/utils';
+
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 const Footer = () => {
-  const categories = [
-    'Office Furniture',
-    'Dining Furniture', 
-    'Visitor Bench',
-    'Study Chair',
-    'Outdoor Range',
-    'Folding Range',
-    'Molded Furniture'
-  ];
+  // State to store categories fetched from the database
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const fetchedCategories = await getAllCategories();
+        if (fetchedCategories) {
+          setCategories(fetchedCategories);
+        }
+      } catch (error) {
+        console.error("Error fetching footer categories:", error);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const quickLinks = [
     { name: 'Home', href: '/' },
@@ -72,13 +90,13 @@ const Footer = () => {
           <div>
             <h3 className="text-lg font-semibold mb-4">Categories</h3>
             <ul className="space-y-2">
-              {categories.map((category) => (
-                <li key={category}>
+              {categories.map((category: Category) => (
+                <li key={category.id}>
                   <Link 
-                    href={`/categories/${category.toLowerCase().replace(/\s+/g, '-')}`}
+                    href={`/categories/${category.slug}`}
                     className="text-gray-300 hover:text-amber-400 transition-colors duration-300 text-sm"
                   >
-                    {category}
+                    {category.name}
                   </Link>
                 </li>
               ))}

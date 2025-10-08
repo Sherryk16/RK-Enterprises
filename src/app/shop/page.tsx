@@ -118,6 +118,55 @@ export default function ShopPage() {
 
   const totalPages = Math.ceil(totalProducts / productsPerPage);
 
+  // Helper function to generate an array of page numbers for pagination
+  const generatePaginationNumbers = (currentPage: number, totalPages: number, maxPageButtons: number = 5) => {
+    const pageNumbers: (number | string)[] = [];
+    const halfMax = Math.floor(maxPageButtons / 2);
+
+    if (totalPages <= maxPageButtons) {
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      // Always add the first page
+      pageNumbers.push(1);
+
+      // Determine start and end for the middle block
+      let start = Math.max(2, currentPage - halfMax);
+      let end = Math.min(totalPages - 1, currentPage + halfMax);
+
+      // Adjust start/end if near boundaries
+      if (currentPage - 1 < halfMax) {
+        end = maxPageButtons - 1;
+      }
+      if (totalPages - currentPage < halfMax + 1) {
+        start = totalPages - maxPageButtons + 2;
+      }
+      
+      // Add ellipsis if needed after the first page
+      if (start > 2) {
+        pageNumbers.push('...');
+      }
+
+      // Add middle pages
+      for (let i = start; i <= end; i++) {
+        pageNumbers.push(i);
+      }
+
+      // Add ellipsis if needed before the last page
+      if (end < totalPages - 1) {
+        pageNumbers.push('...');
+      }
+
+      // Always add the last page (if not already included and totalPages > 1)
+      if (totalPages > 1 && !pageNumbers.includes(totalPages)) {
+        pageNumbers.push(totalPages);
+      }
+    }
+
+    return pageNumbers;
+  };
+
   const handlePageChange = (pageNumber: number) => {
     if (pageNumber > 0 && pageNumber <= totalPages) {
       setCurrentPage(pageNumber);
@@ -242,13 +291,20 @@ export default function ShopPage() {
                   >
                     Previous
                   </button>
-                  {[...Array(totalPages)].map((_, index) => (
+                  {generatePaginationNumbers(currentPage, totalPages).map((page, index) => (
                     <button
-                      key={index}
-                      onClick={() => handlePageChange(index + 1)}
-                      className={`px-3 py-2 border border-gray-300 rounded-lg ${currentPage === index + 1 ? 'bg-amber-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+                      key={page === '...' ? `ellipsis-${index}` : page}
+                      onClick={() => typeof page === 'number' && handlePageChange(page)}
+                      disabled={page === '...'}
+                      className={`px-3 py-2 border border-gray-300 rounded-lg ${
+                        typeof page === 'number'
+                          ? currentPage === page
+                            ? 'bg-amber-600 text-white'
+                            : 'text-gray-700 hover:bg-gray-50'
+                          : 'text-gray-500 cursor-default' // For ellipsis
+                      }`}
                     >
-                      {index + 1}
+                      {page}
                     </button>
                   ))}
                   <button
