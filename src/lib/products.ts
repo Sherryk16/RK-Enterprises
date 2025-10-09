@@ -181,21 +181,22 @@ export async function getProductsByCategory(categorySlug: string) {
   if (categoryError) throw categoryError;
   if (!category) return [];
 
+  console.log(`Fetching products for category: ${categorySlug} (ID: ${category.id})`);
+
   // Fetch all subcategories for this category
   const { data: subcategories, error: subcategoryError } = await supabase
     .from('subcategories')
-    .select('id')
+    .select('id, name, slug') // Select slug as well for debugging
     .eq('category_id', category.id);
 
   if (subcategoryError) throw subcategoryError;
 
-  const relevantIds = [category.id];
-  if (subcategories) {
-    relevantIds.push(...subcategories.map(sub => sub.id));
-  }
+  const subcategoryIds = (subcategories || []).map(sub => sub.id);
+  console.log(`Subcategories found for ${category.name}:`, subcategories);
+  console.log(`Subcategory IDs:`, subcategoryIds);
 
-  // Then get products by category ID OR subcategory ID
-  const { data, error } = await supabase
+  // Build the query to include products directly under the category or within its subcategories
+  let productQuery = supabase
     .from('products')
     .select(`
       *,
@@ -210,11 +211,22 @@ export async function getProductsByCategory(categorySlug: string) {
         name,
         slug
       )
-    `)
-    .in('category_id', relevantIds)
-    .order('created_at', { ascending: false });
+    `);
 
-  if (error) throw error;
+  // Construct the OR condition
+  let orConditions = [`category_id.eq.${category.id}`];
+  if (subcategoryIds.length > 0) {
+    orConditions.push(`subcategory_id.in.(${subcategoryIds.join(',')})`);
+  }
+
+  productQuery = productQuery.or(orConditions.join(','));
+
+  const { data, error } = await productQuery.order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('getProductsByCategory: Supabase query error:', JSON.stringify(error, null, 2));
+    throw error;
+  }
   return data;
 }
 

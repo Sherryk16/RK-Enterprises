@@ -116,17 +116,17 @@ const ProductCard = ({
         </div>
 
         {/* Product Info */}
-        <div className="p-1.5 sm:p-2 lg:p-3 flex-1 flex flex-col">
+        <div className="p-1 sm:p-2 lg:p-3 flex-1 flex flex-col">
           {/* Category */}
-          <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">{category}</p>
+          <p className="text-xs text-gray-500 uppercase tracking-wide mb-0.5">{category}</p>
           
           {/* Product Name */}
-          <h3 className="font-semibold text-gray-800 mb-1 lg:mb-2 line-clamp-2 group-hover:text-amber-600 transition-colors duration-300 text-xs lg:text-sm">
+          <h3 className="font-semibold text-gray-800 mb-0.5 lg:mb-1 line-clamp-2 group-hover:text-amber-600 transition-colors duration-300 text-xs lg:text-sm">
             {name}
           </h3>
 
           {/* Price */}
-          <div className="flex items-center space-x-2 mb-1">
+          <div className="flex items-center space-x-2 mb-0.5">
             {originalPrice && originalPrice > price ? (
               <>
                 <span className="text-sm lg:text-base font-bold text-gray-800">{formatPrice(price)}</span>
@@ -140,7 +140,7 @@ const ProductCard = ({
       </Link>
 
       {/* Add to Cart Button - Always visible on mobile, hover on desktop */}
-      <div className="mt-auto p-1.5 sm:p-2 lg:p-3 pt-0 sm:pt-0 lg:pt-0 transition-all duration-300 block md:opacity-0 md:translate-y-4 md:group-hover:opacity-100 md:group-hover:translate-y-0">
+      <div className="mt-auto p-1 sm:p-2 lg:p-3 pt-0">
         <button
           onClick={handleAddToCart}
           className="w-full bg-amber-600 text-white py-1.5 rounded-full font-semibold hover:bg-amber-700 transition-colors duration-200 text-sm"
