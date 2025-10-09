@@ -174,7 +174,7 @@ export async function getProductsByCategory(categorySlug: string) {
   // First get the category by slug
   const { data: category, error: categoryError } = await supabase
     .from('categories')
-    .select('id')
+    .select('id, name') // Select name here
     .eq('slug', categorySlug)
     .single();
 
