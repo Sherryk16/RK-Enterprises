@@ -123,10 +123,10 @@ export default function ShopPage() {
     setCurrentPage(1);
   };
 
-  const handleSearch = (query: string) => {
-    setSearchTerm(query);
-    setCurrentPage(1);
-  };
+  // const handleSearch = (query: string) => {
+  //   setSearchTerm(query);
+  //   setCurrentPage(1);
+  // };
 
   const totalPages = Math.ceil(totalProducts / productsPerPage);
 

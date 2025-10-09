@@ -4,7 +4,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { getAllCategories } from '@/lib/products';
-import { simpleSlugify } from '@/lib/utils';
 
 interface Category {
   id: string;

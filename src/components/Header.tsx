@@ -19,7 +19,6 @@ const Header = () => {
 
   const [navCategories, setNavCategories] = useState<StructuredCategory[]>([]);
   const { cartCount } = useCart();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter(); // Initialize useRouter
   // Removed local slugify as simpleSlugify is imported from utils
 

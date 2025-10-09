@@ -214,7 +214,7 @@ export async function getProductsByCategory(categorySlug: string) {
     `);
 
   // Construct the OR condition
-  let orConditions = [`category_id.eq.${category.id}`];
+  const orConditions = [`category_id.eq.${category.id}`];
   if (subcategoryIds.length > 0) {
     orConditions.push(`subcategory_id.in.(${subcategoryIds.join(',')})`);
   }
