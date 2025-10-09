@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-// Removed import of SearchBar
-import { getAllProducts } from '@/lib/products';
+import { getAllProducts } from '@/lib/products'; // Keep getAllProducts for live search
 import Image from 'next/image';
 
 interface Product {
@@ -87,9 +86,22 @@ const HeaderSearch = () => {
     }, 100); 
   };
 
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchTerm.trim()) {
+      console.log('HeaderSearch: Redirecting with search term:', searchTerm.trim()); // DEBUG LOG
+      router.push(`/shop?search=${encodeURIComponent(searchTerm.trim())}`);
+      setShowResults(false); // Close any open results dropdown
+      setSearchTerm(''); // Clear search term after navigation
+      if (inputRef.current) {
+        inputRef.current.blur(); // Remove focus from the input
+      }
+    }
+  };
+
   return (
     <div className="relative flex-1 max-w-lg mx-4" ref={searchContainerRef}>
-      <div className="relative flex items-center w-full">
+      <form onSubmit={handleFormSubmit} className="relative flex items-center w-full">
         <input
           ref={inputRef}
           type="text"
@@ -100,12 +112,16 @@ const HeaderSearch = () => {
           onBlur={handleBlur}
           className="w-full px-4 py-3 pl-12 pr-4 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent"
         />
-        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">
+        <button
+          type="submit"
+          className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-amber-600 transition-colors duration-200"
+          aria-label="Search"
+        >
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-        </div>
-      </div>
+        </button>
+      </form>
 
       {showResults && (loading || searchResults.length > 0 || searchTerm.length > 2) && (
         <div className="absolute top-full left-0 right-0 bg-white shadow-lg rounded-lg mt-1 z-50 max-h-80 overflow-y-auto border border-gray-200">

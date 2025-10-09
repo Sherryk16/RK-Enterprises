@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Footer from '@/components/Footer';
 import ProductCard from '@/components/ProductCard';
-import SearchBar from '@/components/SearchBar';
+// Removed import of SearchBar
 import { getAllProducts, getAllCategories } from '@/lib/products';
 import { useSearchParams } from 'next/navigation'; // Import useSearchParams
 
@@ -33,12 +33,23 @@ export default function ShopPage() {
   const [sortBy, setSortBy] = useState('featured');
   const searchParams = useSearchParams();
   const initialSearchQuery = searchParams.get('search') || '';
+  // Use initialSearchQuery directly to set searchTerm state
   const [searchTerm, setSearchTerm] = useState(initialSearchQuery);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [productsPerPage] = useState(10);
   const [totalProducts, setTotalProducts] = useState(0);
+
+  useEffect(() => {
+    // Update searchTerm if the URL search parameter changes
+    const currentSearchQuery = searchParams.get('search') || '';
+    console.log('ShopPage: currentSearchQuery from URL:', currentSearchQuery); // DEBUG LOG
+    if (currentSearchQuery !== searchTerm) {
+      setSearchTerm(currentSearchQuery);
+      setCurrentPage(1); // Reset to first page on new search
+    }
+  }, [searchParams, searchTerm]);
 
   useEffect(() => {
     const getPriceBounds = () => {
@@ -70,6 +81,7 @@ export default function ShopPage() {
       setError(null);
       try {
         const { minPrice, maxPrice } = getPriceBounds();
+        console.log('ShopPage: Fetching products with searchTerm:', searchTerm); // DEBUG LOG
 
         const [productsResult, categoriesData] = await Promise.all([
           getAllProducts(selectedCategory, minPrice, maxPrice, sortBy, searchTerm, currentPage, productsPerPage),
@@ -216,7 +228,8 @@ export default function ShopPage() {
                   <option value="above-50000">Above PKR 50,000</option>
                 </select>
 
-                {/* Search Bar for Shop Page */}
+                {/* Removed Search Bar for Shop Page */}
+                {/* 
                 <div className="md:flex-1 md:max-w-xs">
                   <SearchBar 
                     onSearch={handleSearch} 
@@ -224,6 +237,7 @@ export default function ShopPage() {
                     debounceTime={300}
                   />
                 </div>
+                 */}
               </div>
 
               <div className="flex items-center space-x-4">

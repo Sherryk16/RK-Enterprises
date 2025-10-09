@@ -294,17 +294,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                   )}
                 </div>
 
-                {/* Description */}
-                {product.description && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Description</h3>
-                    <div
-                      className="text-gray-700 text-base"
-                      dangerouslySetInnerHTML={{ __html: product.description.replace(/\n/g, '<br />') }}
-                    />
-                  </div>
-                )}
-
                 {/* Colors */}
                 {product.colors && product.colors.length > 0 && (
                   <div>
@@ -313,12 +302,24 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                       {product.colors.map((color, index) => (
                         <span
                           key={index}
-                          className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-                        >
-                          {color}
-                        </span>
+                          className="w-7 h-7 rounded-full border border-gray-300 shadow-sm cursor-pointer"
+                          style={{ backgroundColor: color.toLowerCase() }}
+                          title={color}
+                          aria-label={color}
+                        ></span>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Description */}
+                {product.description && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Description</h3>
+                    <div
+                      className="text-gray-700 text-base"
+                      dangerouslySetInnerHTML={{ __html: product.description.replace(/\n/g, '<br />') }}
+                    />
                   </div>
                 )}
 

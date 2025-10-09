@@ -31,7 +31,8 @@ export async function getAllProducts(
   sortBy?: string,
   searchQuery?: string,
   page: number = 1,
-  limit: number = 20
+  limit: number = 20,
+  subCategorySlug?: string // New parameter for subcategory filtering
 ) {
   let query = supabase
     .from('products')
@@ -63,6 +64,19 @@ export async function getAllProducts(
     }
   }
 
+  if (subCategorySlug) {
+    const { data: subcategory, error: subcategoryError } = await supabase
+      .from('subcategories')
+      .select('id')
+      .eq('slug', subCategorySlug)
+      .single();
+
+    if (subcategoryError) throw subcategoryError;
+    if (subcategory) {
+      query = query.eq('subcategory_id', subcategory.id);
+    }
+  }
+
   if (minPrice !== undefined) {
     query = query.gte('price', minPrice);
   }
@@ -72,8 +86,33 @@ export async function getAllProducts(
   }
 
   if (searchQuery) {
+    console.log('getAllProducts: Search query received:', searchQuery); // DEBUG LOG
     const searchPattern = `%${searchQuery}%`;
-    query = query.or(`name.ilike.${searchPattern},description.ilike.${searchPattern}`);
+    console.log('getAllProducts: Generated searchPattern:', searchPattern); // DEBUG LOG
+
+    // First, find category IDs that match the search query
+    const { data: matchingCategories, error: categorySearchError } = await supabase
+      .from('categories')
+      .select('id')
+      .ilike('name', searchPattern);
+
+    if (categorySearchError) {
+      console.error('Error searching categories:', categorySearchError);
+      // Decide how to handle this error: throw, return empty, or log and continue
+      // For now, we'll log and continue without category-based filtering if it fails
+    }
+    console.log('getAllProducts: Matching categories from search:', matchingCategories); // DEBUG LOG
+
+    const categoryIds = matchingCategories?.map(cat => cat.id) || [];
+    console.log('getAllProducts: Extracted categoryIds:', categoryIds); // DEBUG LOG
+
+    // Build the main search filter
+    let searchFilter = `name.ilike.${searchPattern},description.ilike.${searchPattern}`;
+    if (categoryIds.length > 0) {
+      searchFilter += `,category_id.in.(${categoryIds.join(',')})`;
+    }
+    console.log('getAllProducts: Final searchFilter string:', searchFilter); // DEBUG LOG
+    query = query.or(searchFilter);
   }
 
   switch (sortBy) {

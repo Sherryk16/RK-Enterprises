@@ -3,12 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import ProductForm from '@/components/admin/ProductForm';
-import { getAllProducts, deleteProduct } from '@/lib/products';
+import { getAllProducts, deleteProduct, getCategoriesWithSubcategories } from '@/lib/products';
 import { ProductInput } from '@/lib/products';
 
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import * as XLSX from 'xlsx';
+import Image from 'next/image'; // Keep this one for the Image component in the table
 
 interface Product extends ProductInput {
   id: string;
@@ -27,10 +27,12 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedSubcategory, setSelectedSubcategory] = useState(''); // New state for selected subcategory
   const [categories, setCategories] = useState<{
     id: string;
     name: string;
     slug: string;
+    subcategories?: { id: string; name: string; slug: string }[]; // Add subcategories to category interface
   }[]>([]);
 
   const router = useRouter();
@@ -39,7 +41,7 @@ export default function AdminPage() {
   const fetchProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const allCategories = await (await import('@/lib/products')).getAllCategories();
+      const allCategories = await getCategoriesWithSubcategories(); // Corrected function name
       setCategories(allCategories || []);
 
       const { products: fetchedProducts, totalCount } = await getAllProducts(
@@ -48,7 +50,9 @@ export default function AdminPage() {
         undefined,
         sortBy,
         searchQuery,
-        currentPage
+        currentPage,
+        undefined, // limit (default to 20)
+        selectedSubcategory // Pass selected subcategory
       );
       setProducts(fetchedProducts || []);
       setTotalPages(Math.ceil(totalCount / 20));
@@ -57,7 +61,7 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, selectedCategory, sortBy, searchQuery]);
+  }, [currentPage, selectedCategory, selectedSubcategory, sortBy, searchQuery]); // Add selectedSubcategory to dependencies
 
   useEffect(() => {
     fetchProducts();
@@ -66,8 +70,9 @@ export default function AdminPage() {
     if (searchQuery) params.set('search', searchQuery);
     if (sortBy !== 'newest') params.set('sortBy', sortBy);
     if (selectedCategory) params.set('category', selectedCategory);
+    if (selectedSubcategory) params.set('subcategory', selectedSubcategory);
     router.replace(`?${params.toString()}`);
-  }, [fetchProducts, currentPage, searchQuery, sortBy, selectedCategory, router]);
+  }, [fetchProducts, currentPage, searchQuery, sortBy, selectedCategory, selectedSubcategory, router]); // Add selectedSubcategory to dependencies
 
   const handleAddProduct = () => {
     setEditingProduct(null);
@@ -88,6 +93,12 @@ export default function AdminPage() {
         console.error('Error deleting product:', error);
       }
     }
+  };
+
+  const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedCategory(e.target.value);
+    setSelectedSubcategory(''); // Reset subcategory when category changes
+    setCurrentPage(1);
   };
 
   const goToNextPage = () => {
@@ -226,12 +237,22 @@ export default function AdminPage() {
           />
           <select
             value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
+            onChange={handleCategoryChange}
             className="border p-2 rounded-md w-full sm:flex-1"
           >
             <option value="">All Categories</option>
             {categories.map((cat) => (
               <option key={cat.id} value={cat.slug}>{cat.name}</option>
+            ))}
+          </select>
+          <select
+            value={selectedSubcategory}
+            onChange={(e) => setSelectedSubcategory(e.target.value)}
+            className="border p-2 rounded-md w-full sm:flex-1"
+          >
+            <option value="">All Subcategories</option>
+            {selectedCategory && categories.find(cat => cat.slug === selectedCategory)?.subcategories?.map(sub => (
+              <option key={sub.id} value={sub.slug}>{sub.name}</option>
             ))}
           </select>
           <select

@@ -46,36 +46,6 @@ const Header = () => {
         console.log('Header: Raw sharedSubcategories:', categoriesData); // DEBUG LOG
 
         if (isMounted) {
-          // Display all categories fetched, no manual filtering needed
-          // const allCategories: NavCategory[] = (categoriesData || []).map((category: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
-          //   ...category,
-          //   category_subcategories: (category.category_subcategories || []).map((link: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
-          //     subcategory_id: link.subcategory_id as NavSubcategory
-          //   }))
-          // }));
-          
-          // console.log('All Categories for Header (before shared subcategories):', allCategories); // TEMP DEBUG LOG
-
-          // Add shared subcategories to relevant categories
-          // allCategories.forEach((category: NavCategory) => {
-          //   const catSlug = category.slug || simpleSlugify(category.name || '');
-          //   const sharedSubs = sharedSubcategories.filter((sub: NavSubcategory & { categories: string[] }) => 
-          //     sub.categories.includes(catSlug) || 
-          //     sub.categories.includes(category.slug) ||
-          //     (category.name && sub.categories.some((slug: string) => 
-          //       simpleSlugify(category.name).includes(simpleSlugify(slug)) || 
-          //       simpleSlugify(slug).includes(simpleSlugify(category.name))
-          //     ))
-          //   );
-          //   
-          //   if (sharedSubs.length > 0) {
-          //     category.subcategories = [
-          //       ...(category.subcategories || []),
-          //       ...sharedSubs
-          //     ];
-          //   }
-          // });
-          
           const transformed = transformCategories(categoriesData || []);
           setNavCategories(transformed);
           console.log('Header: Final Navigation Categories (after transform):', JSON.stringify(transformed, null, 2)); // CRITICAL DEBUG LOG
@@ -234,7 +204,7 @@ const Header = () => {
       {/* Categories Menu - Visible on desktop, hidden on mobile */}
       <div className="hidden md:block bg-gradient-to-r from-amber-800 to-amber-600 text-white py-2">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col lg:flex-row items-center justify-between py-3 space-y-2 lg:space-y-0">
+          <div className="flex justify-center items-center py-3 space-y-2 lg:space-y-0">
             <div className="flex items-center space-x-6">
               
               {navCategories.map((category: StructuredCategory) => {
@@ -276,12 +246,7 @@ const Header = () => {
                 );
               })}
             </div>
-            <div className="hidden md:flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
-              <span className="text-xs sm:text-sm text-white text-center">New Arrival SALE - Up to 60% OFF!</span>
-              <button className="bg-red-600 text-white px-4 py-1 rounded-full text-sm font-medium hover:bg-red-700">
-                Shop Now
-              </button>
-            </div>
+            
           </div>
         </div>
       </div>
