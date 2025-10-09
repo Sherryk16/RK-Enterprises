@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { simpleSlugify } from '@/lib/utils';
 import Image from 'next/image';
@@ -27,9 +27,10 @@ export default function SimpleImageUpload({ onImageUploaded, currentImages }: Si
     }
   };
 
-  const handleUpload = async () => {
-    if (!file) {
-      setUploadError('Please select a file to upload.');
+  const handleUpload = useCallback(async (fileToUpload: File | null = null) => {
+    const fileToUse = fileToUpload || file;
+    if (!fileToUse) {
+      setUploadError('Please select a file or paste an image to upload.');
       return;
     }
 
@@ -37,14 +38,14 @@ export default function SimpleImageUpload({ onImageUploaded, currentImages }: Si
     setUploadError(null);
     setUploadSuccess(false);
 
-    const fileExtension = file.name.split('.').pop();
-    const fileName = `${simpleSlugify(file.name.replace(`.${fileExtension}`, ''))}-${Date.now()}.${fileExtension}`;
+    const fileExtension = fileToUse.name.split('.').pop();
+    const fileName = `${simpleSlugify(fileToUse.name.replace(`.${fileExtension}`, ''))}-${Date.now()}.${fileExtension}`;
     const filePath = `products/${fileName}`;
 
     try {
       const { error: uploadError } = await supabase.storage
         .from(SUPABASE_BUCKET_NAME)
-        .upload(filePath, file, {
+        .upload(filePath, fileToUse, {
           cacheControl: '3600',
           upsert: false,
         });
@@ -68,11 +69,35 @@ export default function SimpleImageUpload({ onImageUploaded, currentImages }: Si
     } finally {
       setUploading(false);
     }
-  };
+  }, [file, onImageUploaded]);
+
+  const handlePaste = useCallback((event: React.ClipboardEvent<HTMLDivElement>) => {
+    const items = event.clipboardData.items;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const pastedFile = items[i].getAsFile();
+        if (pastedFile) {
+          // Create a new File object with a unique name
+          const fileName = `pasted-image-${Date.now()}.png`; // Assuming PNG for pasted images
+          const imageFile = new File([pastedFile], fileName, { type: pastedFile.type });
+          setFile(imageFile); // Set the file in state for the upload button
+          setUploadError(null);
+          setUploadSuccess(false);
+          event.preventDefault(); // Prevent default paste behavior
+          // Optionally, auto-upload the pasted image
+          // handleUpload(imageFile);
+          break;
+        }
+      }
+    }
+  }, [setFile, setUploadError, setUploadSuccess]);
 
   return (
-    <div className="border border-gray-300 rounded-md p-4 mb-4 bg-gray-50">
-      <label className="block text-sm font-medium text-gray-700 mb-2">Upload Images</label>
+    <div
+      className="border border-gray-300 rounded-md p-4 mb-4 bg-gray-50"
+      onPaste={handlePaste}
+    >
+      <label className="block text-sm font-medium text-gray-700 mb-2">Upload Images or Paste Image Here</label>
       <input
         type="file"
         accept="image/*"
@@ -86,7 +111,7 @@ export default function SimpleImageUpload({ onImageUploaded, currentImages }: Si
       />
       <button
         type="button"
-        onClick={handleUpload}
+        onClick={() => handleUpload()}
         disabled={!file || uploading}
         className="mt-3 w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:text-sm disabled:opacity-50"
       >
