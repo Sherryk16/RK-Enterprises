@@ -171,7 +171,7 @@ export default async function Home() {
                     'study range': '/study.png',
                     'outdoor range': '/outdoor.png',
                     'folding range': '/folding.png',
-                    'molded range': '/molded.png',
+                    'moulded range': '/molded.png',
                     // 'craft chair upvc': '/craft.png' // Not directly a top-level category in new structure
                   };
                   const normalizedCategoryName = categoryName.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();

@@ -15,7 +15,7 @@ interface Product {
   name: string;
   price: number;
   original_price?: number;
-  images?: string[];
+  images?: string[]; // Updated to array of strings
   description?: string;
   detailed_description?: string;
   colors?: string[];
@@ -32,6 +32,14 @@ interface Product {
   slug: string;
 }
 
+interface AddToCartProduct {
+  id: string;
+  name: string;
+  price: number;
+  image: string; // The specific image URL for the cart item
+  slug: string;
+}
+
 export default function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const resolvedParams = use(params);
   const slug = resolvedParams.slug;
@@ -44,7 +52,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFullDescription, setShowFullDescription] = useState(false); // State for toggling full description
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0); // State for current image index
+  // const [selectedColor, setSelectedColor] = useState<string>(''); // New state for selected color - REMOVED
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0); // State for current image index - REINSTATED
 
   useEffect(() => {
     if (slug) {
@@ -60,15 +69,27 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
       setError(null);
       try {
         const fetchedProduct: Product | null = await getProductBySlug(slug);
-        console.log('ProductDetailPage: Fetched product data:', fetchedProduct); // DEBUG LOG
+        // console.log('ProductDetailPage: Fetched product data:', fetchedProduct); // DEBUG LOG - REMOVED
 
         if (!fetchedProduct) {
           console.error('ProductDetailPage: Product not found for slug:', slug);
           notFound();
           return;
         }
+        // Process colors if they are a single comma-separated string within an array
+        if (fetchedProduct.colors && fetchedProduct.colors.length > 0 && typeof fetchedProduct.colors[0] === 'string' && fetchedProduct.colors[0].includes(',')) {
+          fetchedProduct.colors = fetchedProduct.colors[0].split(',').map(color => color.trim());
+        }
         setProduct(fetchedProduct);
         setSelectedImageIndex(0); // Reset selected image when product changes
+        // Set initial selected color to the first available color or empty - REMOVED
+        // if (fetchedProduct.images && fetchedProduct.images.length > 0) {
+        //   setSelectedColor(fetchedProduct.images[0].color || '');
+        // } else if (fetchedProduct.colors && fetchedProduct.colors.length > 0) {
+        //   setSelectedColor(fetchedProduct.colors[0]);
+        // } else {
+        //   setSelectedColor('');
+        // }
 
         if (fetchedProduct?.categories?.id) {
           const fetchedRelatedProducts: Product[] = await getRelatedProducts(fetchedProduct.categories.id, fetchedProduct.id);
@@ -91,7 +112,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
     fetchProductData();
   }, [slug]); // Use the unwrapped slug in dependencies
 
-  console.log('ProductDetailPage: Rendering product data:', product); // DEBUG LOG
+  // console.log('ProductDetailPage: Rendering product data:', product); // DEBUG LOG - REMOVED
 
   if (loading) {
     return (
@@ -124,7 +145,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
         id: product.id,
         name: product.name,
         price: product.price,
-        image: product.images?.[0] || "/placeholder-product.jpg",
+        image: product.images?.[0] || "https://via.placeholder.com/500", // Reverted to first image URL
         slug: product.slug,
         quantity: 1,
       });
@@ -132,6 +153,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
     }
   };
 
+  // REINSTATED: goToNextImage, goToPrevImage, handleThumbnailClick
   const goToNextImage = () => {
     if (product && product.images && product.images.length > 1) {
       setSelectedImageIndex((prevIndex) => (prevIndex + 1) % product.images!.length);
@@ -148,6 +170,21 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
     setSelectedImageIndex(index);
   };
 
+  // REMOVED: getDisplayedImageUrl
+  // const getDisplayedImageUrl = () => {
+  //   if (!product?.images || product.images.length === 0) {
+  //     return "/placeholder-product.jpg";
+  //   }
+  //   // If only one image, return the first image
+  //   if (product.images.length === 1) {
+  //     return product.images[0].url;
+  //   }
+
+  //   // Try to find a color-specific image
+  //   const colorSpecificImage = product.images.find(img => img.color === selectedColor);
+  //   return colorSpecificImage ? colorSpecificImage.url : product.images[0].url; // Fallback to first image
+  // };
+
   const renderedTruncatedDescription = product.detailed_description ? cleanHtml(product.detailed_description).substring(0, 150) + '...' : '';
 
   return (
@@ -160,7 +197,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
               "@context": "https://schema.org",
               "@type": "Product",
               "name": product.name,
-              "image": product.images && product.images.length > 0 ? product.images[0] : "/placeholder-product.jpg",
+              "image": product.images && product.images.length > 0 && product.images[0] ? product.images[0] : "https://via.placeholder.com/500", // Directly use first image URL with robust fallback
               "description": product.description || product.detailed_description || "",
               "sku": product.id, // Using product ID as SKU
               "offers": {
@@ -212,13 +249,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                   {product.images && product.images.length > 0 ? (
                     <>
                       <Image
-                        src={product.images[selectedImageIndex]}
+                        src={product.images?.[selectedImageIndex] || "https://via.placeholder.com/500"} // Use selectedImageIndex with robust fallback
                         alt={product.name}
                         width={500}
                         height={500}
                         className="w-full h-full object-contain"
                       />
-                      {product.images.length > 1 && (
+                      {product.images && product.images.length > 1 && (
                         <>
                           <button
                             onClick={goToPrevImage}
@@ -248,18 +285,18 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                   )}
                 </div>
                 
-                {/* Additional Images */}
+                {/* Additional Images (Thumbnails) */}
                 {product.images && product.images.length > 1 && (
                   <div className="grid grid-cols-4 gap-2 mt-4 max-w-md mx-auto">
-                    {product.images.map((image, index) => (
+                    {product.images.map((imageUrl, index) => (
                       <div
                         key={index}
                         className={`aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer border-2 ${index === selectedImageIndex ? 'border-amber-500' : 'border-transparent'}`}
                         onClick={() => handleThumbnailClick(index)}
                       >
                         <Image
-                          src={image}
-                          alt={`${product.name} thumbnail ${index + 1}`}
+                          src={imageUrl || "https://via.placeholder.com/100"} // Robust external placeholder for thumbnails
+                          alt={`${product.name} thumbnail`}
                           width={100}
                           height={100}
                           className="w-full h-full object-cover"
@@ -294,7 +331,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                   )}
                 </div>
 
-                {/* Colors */}
+                {/* Available Colors - Now dynamic and interactive */}
                 {product.colors && product.colors.length > 0 && (
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-1">Available Colors</h3>
@@ -306,6 +343,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                           style={{ backgroundColor: color.toLowerCase() }}
                           title={color}
                           aria-label={color}
+                          // onClick={() => setSelectedColor(color)} // Removed color selection logic
                         ></span>
                       ))}
                     </div>
@@ -354,7 +392,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                     )}
                     {product.is_visitor_sofa && (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                        Visitor Sofa
+                        Auditorium Chair
                       </span>
                     )}
                     {product.is_study_chair && (
@@ -377,7 +415,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
 
                 {/* Action Buttons - Always visible */}
                 <div className="flex flex-col sm:flex-row gap-4 mt-6">
-                  <AddToCartButton product={product} />
+                  <AddToCartButton product={{
+                    id: product.id,
+                    name: product.name,
+                    price: product.price,
+                    slug: product.slug,
+                    image: product.images?.[0] || "https://via.placeholder.com/500", // Reverted to first image URL
+                  } as AddToCartProduct} />
                   <button 
                     onClick={handleBuyNow} // Attach handleBuyNow
                     className="flex-1 border-2 border-amber-600 text-amber-600 px-8 py-4 rounded-full font-semibold text-lg hover:bg-amber-600 hover:text-white transition-colors duration-300"
@@ -463,7 +507,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                       reviews={0}
                       isNew={false}
                       discount={discountPercentage}
-                      image={relatedProduct.images?.[0] || "/placeholder-product.jpg"}
+                      image={relatedProduct.images && relatedProduct.images.length > 0 && relatedProduct.images[0] ? relatedProduct.images[0] : "https://via.placeholder.com/500"} // Access url with robust fallback
                     />
                   );
                 })}

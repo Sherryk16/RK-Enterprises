@@ -10,7 +10,7 @@ interface ProductCardProps {
   name: string;
   price: number;
   originalPrice?: number;
-  image: string;
+  image?: string;
   category: string;
   slug: string;
   rating?: number; // Made optional as it's not used directly in rendering

@@ -394,21 +394,12 @@ export async function getProductById(id: string) {
 
 // Get single product by slug
 export async function getProductBySlug(slug: string) {
-  const { data, error } = await supabase
+  const { data: product, error } = await supabase
     .from('products')
     .select(`
       *,
-      slug,
-      categories:category_id (
-        id,
-        name,
-        slug
-      ),
-      subcategories:subcategory_id (
-        id,
-        name,
-        slug
-      )
+      categories:category_id (id, name, slug),
+      subcategories:subcategory_id (id, name, slug)
     `)
     .eq('slug', slug)
     .single();
@@ -417,7 +408,7 @@ export async function getProductBySlug(slug: string) {
     console.error('getProductBySlug: Supabase query error:', JSON.stringify(error, null, 2));
     throw error;
   }
-  return data;
+  return product;
 }
 
 // Create or update product

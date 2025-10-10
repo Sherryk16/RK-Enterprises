@@ -113,7 +113,7 @@ export const transformCategories = (
     processCategoryGroup('Waiting Benches Range'),
     processCategoryGroup('Dining Range'),
     processCategoryGroup('Folding Range'),
-    processCategoryGroup('Moulded Range'), // Changed 'Molded Range' to 'Moulded Range'
+    processCategoryGroup('Moulded Range'),
     processCategoryGroup('Outdoor Range'),
     processCategoryGroup('Study Range'),
   ];

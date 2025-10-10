@@ -14,7 +14,7 @@ interface ProductFormData {
   description: string;
   detailed_description: string;
   colors: string[];
-  images: string[];
+  images: string[]; // Reverted to string array
   is_featured: boolean;
   show_in_office: boolean;
   is_molded: boolean;
@@ -50,7 +50,7 @@ interface ProductProps {
   description?: string;
   detailed_description?: string;
   colors?: string[];
-  images?: string[];
+  images?: string[]; // Update to array of objects
   is_featured?: boolean;
   show_in_office?: boolean;
   is_molded?: boolean;
@@ -80,7 +80,7 @@ export default function ProductForm({
     description: '',
     detailed_description: '',
     colors: [''],
-    images: [''],
+    images: [''], // Reverted to string array
     is_featured: false,
     show_in_office: false,
     is_molded: false,
@@ -97,6 +97,7 @@ export default function ProductForm({
   const [subcategories, setSubcategories] = useState<Subcategory[]>([]);
   const [loading, setLoading] = useState(false);
   const [newImageUrl, setNewImageUrl] = useState(''); // New state for manual image URL
+  // const [newImageColor, setNewImageColor] = useState(''); // New state for associating color with new image - REMOVED
 
   // Fetch categories from Supabase
   const fetchCategories = useCallback(async () => {
@@ -147,7 +148,7 @@ export default function ProductForm({
         description: product.description || '',
         detailed_description: product.detailed_description || '',
         colors: product.colors || [''],
-        images: product.images || [''],
+        images: product.images || [''], // Reverted to string array
         is_featured: product.is_featured || false,
         show_in_office: product.show_in_office || false,
         is_molded: product.is_molded || false,
@@ -211,7 +212,7 @@ export default function ProductForm({
         description: formData.description,
         detailed_description: formData.detailed_description,
         colors: formData.colors.filter(color => color.trim() !== ''),
-        images: formData.images.filter(img => img.trim() !== ''),
+        images: formData.images.filter(img => img.trim() !== ''), // Filter by url.trim()
         is_featured: formData.is_featured,
         show_in_office: formData.show_in_office,
         is_molded: formData.is_molded,
@@ -271,12 +272,29 @@ export default function ProductForm({
 
   // Image management
   const handleImageUploaded = (url: string) => {
-    setFormData(prev => ({ ...prev, images: [...prev.images, url] }));
+    // if (newImageColor.trim() && url.trim()) { // Removed color association logic
+    //   setFormData(prev => ({ ...prev, images: [...prev.images, { color: newImageColor.trim(), url: url.trim() }] }));
+    //   setNewImageColor(''); // Clear color input after adding
+    // } else if (url.trim()) {
+    //   // If no color is specified, add it as a general image or with a default color
+    //   setFormData(prev => ({ ...prev, images: [...prev.images, { color: 'default', url: url.trim() }] }));
+    // }
+    if (url.trim()) {
+      setFormData(prev => ({ ...prev, images: [...prev.images, url.trim()] })); // Reverted to simple string URL
+    }
   };
 
   const addManualImage = () => {
+    // if (newImageUrl.trim() && newImageColor.trim()) { // Removed color association logic
+    //   setFormData(prev => ({ ...prev, images: [...prev.images, { color: newImageColor.trim(), url: newImageUrl.trim() }] }));
+    //   setNewImageColor(''); // Clear URL input after adding
+    //   setNewImageColor(''); // Clear color input after adding
+    // } else if (newImageUrl.trim()) {
+    //   setFormData(prev => ({ ...prev, images: [...prev.images, { color: 'default', url: newImageUrl.trim() }] }));
+    //   setNewImageUrl('');
+    // }
     if (newImageUrl.trim()) {
-      setFormData(prev => ({ ...prev, images: [...prev.images, newImageUrl.trim()] }));
+      setFormData(prev => ({ ...prev, images: [...prev.images, newImageUrl.trim()] })); // Reverted to simple string URL
       setNewImageUrl(''); // Clear input after adding
     }
   };
@@ -441,7 +459,7 @@ export default function ProductForm({
             {/* Image Upload Section */}
             <SimpleImageUpload 
               onImageUploaded={handleImageUploaded}
-              currentImages={formData.images}
+              currentImages={formData.images} // Reverted to passing string array
             />
 
             <div>
@@ -454,10 +472,21 @@ export default function ProductForm({
                   className="flex-1 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Paste image URL here"
                 />
+                {/* Removed color input for new image */}
+                {/* <div className="flex-1 min-w-[100px]">
+                  <input
+                    type="text"
+                    value={newImageColor}
+                    onChange={(e) => setNewImageColor(e.target.value)}
+                    className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="Color (e.g., Red)"
+                  />
+                </div> */}
                 <button
                   type="button"
                   onClick={addManualImage}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                  disabled={!newImageUrl.trim()} // Only disable if URL is empty
                 >
                   Add URL
                 </button>
@@ -471,6 +500,16 @@ export default function ProductForm({
                     className="flex-1 border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
                     placeholder="https://example.com/image.jpg"
                   />
+                  {/* Removed color input for existing image */}
+                  {/* <div className="flex-1 min-w-[100px]">
+                    <input
+                      type="text"
+                      value={image.color}
+                      onChange={(e) => updateImage(index, { ...image, color: e.target.value })}
+                      className="block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      placeholder="Color"
+                    />
+                  </div> */}
                   <button
                     type="button"
                     onClick={() => removeImage(index)}

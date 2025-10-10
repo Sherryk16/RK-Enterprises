@@ -287,6 +287,7 @@ export default function AdminPage() {
               {products.map((product) => (
                 <tr key={product.id}>
                   <td className="px-6 py-4">
+                    {/* {console.log(`Product ${product.name} images:`, product.images)} */}
                     {product.images && product.images.length > 0 && (
                       <Image src={product.images[0]} alt={product.name} width={50} height={50} className="rounded-md object-cover" />
                     )}
