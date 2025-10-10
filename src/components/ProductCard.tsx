@@ -48,7 +48,7 @@ const ProductCard = ({
       id,
       name,
       price,
-      image,
+      image: image || "https://via.placeholder.com/500", // Provide fallback for image
       slug,
       quantity: 1,
     });
