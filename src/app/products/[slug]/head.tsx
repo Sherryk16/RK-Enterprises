@@ -41,7 +41,7 @@ export async function generateMetadata({
       title,
       description,
       type: 'website',
-      url: `https://rkenterprise.com/products/${product.slug}`,
+      url: `https://rkenterprisehub.com/products/${product.slug}`,
       images: product.images && product.images.length > 0 ? [
         {
           url: product.images[0],
@@ -66,7 +66,7 @@ export async function generateMetadata({
       images: product.images && product.images.length > 0 ? [product.images[0]] : ['/sitelogo.png'],
     },
     alternates: {
-      canonical: `https://rkenterprise.com/products/${product.slug}`,
+      canonical: `https://rkenterprisehub.com/products/${product.slug}`,
     },
   };
 }

@@ -100,7 +100,8 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
         let errorMessage = 'Failed to load product.';
         if (err instanceof Error) {
           errorMessage = err.message;
-        } else if (typeof err === 'string') {
+        }
+        else if (typeof err === 'string') {
           errorMessage = err;
         }
         setError(errorMessage);
@@ -179,7 +180,6 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
   //   if (product.images.length === 1) {
   //     return product.images[0].url;
   //   }
-
   //   // Try to find a color-specific image
   //   const colorSpecificImage = product.images.find(img => img.color === selectedColor);
   //   return colorSpecificImage ? colorSpecificImage.url : product.images[0].url; // Fallback to first image
@@ -270,7 +270,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                             onClick={goToNextImage}
                             className="absolute right-0 top-1/2 -translate-y-1/2 bg-gray-800 bg-opacity-50 text-white p-2 rounded-full z-10 hover:bg-opacity-75 transition-colors mr-2"
                             aria-label="Next image"
-                          >
+                            >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                             </svg>
@@ -421,6 +421,7 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
                     price: product.price,
                     slug: product.slug,
                     image: product.images?.[0] || "https://via.placeholder.com/500", // Reverted to first image URL
+                    quantity: 1,
                   } as AddToCartProduct} />
                   <button 
                     onClick={handleBuyNow} // Attach handleBuyNow
