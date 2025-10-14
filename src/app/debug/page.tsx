@@ -1,8 +1,8 @@
 import { 
   getAllProducts, 
-  getOfficeProducts,
-  getExistingCategoriesForDebug, 
-  getRawProductSample
+  // getOfficeProducts,
+  // getExistingCategoriesForDebug, 
+  // getRawProductSample
 } from '@/lib/products';
 
 interface CategoryDebugData {
@@ -44,36 +44,24 @@ interface DebugContents {
 export default async function DebugPage() {
   let debugData: DebugContents = {};
   try {
-    const categories = await getExistingCategoriesForDebug();
+    // const categories = await getExistingCategoriesForDebug();
     const allProductsResult = await getAllProducts(); // Fetch all products without filters
-    const rawProducts = await getRawProductSample();
-    const officeProductsData = await getOfficeProducts();
+    // const rawProducts = await getRawProductSample();
+    // const officeProductsData = await getOfficeProducts();
 
-    const totalCategories = categories?.length || 0;
-    const totalProducts = allProductsResult?.totalCount || 0;
-    const officeProducts = officeProductsData?.length || 0;
-
-    const productsByCategory: ProductByCategoryDebugData[] = [];
-    if (categories && allProductsResult?.products) {
-      for (const category of categories) {
-        const count = allProductsResult.products.filter(p => p.category_id === category.id).length;
-        productsByCategory.push({
-          categoryName: category.name,
-          categorySlug: category.slug || '',
-          productCount: count,
-        });
-      }
-    }
+    // const totalCategories = categories?.length || 0;
+    const totalProducts = allProductsResult?.products?.length || 0;
+    // const officeProducts = officeProductsData?.length || 0;
 
     debugData = {
       summary: {
-        totalCategories,
+        totalCategories: 0, // Placeholder as categories are no longer fetched directly
         totalProducts,
-        officeProducts,
-        productsByCategory,
+        officeProducts: 0, // Placeholder as office products are no longer fetched directly
+        productsByCategory: [], // Placeholder as category-based product counting is removed
       },
-      categories: categories || [],
-      products: rawProducts || [],
+      categories: [], // Placeholder
+      products: [], // Placeholder
     };
   } catch (err: unknown) {
     debugData.error = err instanceof Error ? err.message : 'An unknown error occurred while fetching debug data.';
@@ -122,7 +110,7 @@ export default async function DebugPage() {
       )}
 
       {/* Categories */}
-      {debugData.categories && (
+      {/* {debugData.categories && (
         <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Categories ({debugData.categories.length})</h2>
         <div className="overflow-x-auto">
@@ -148,10 +136,10 @@ export default async function DebugPage() {
           </table>
         </div>
         </div>
-      )}
+      )} */}
 
       {/* Products by Category */}
-      {debugData.summary && (
+      {/* {debugData.summary && (
         <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Products by Category</h2>
           <div className="space-y-4">
@@ -166,10 +154,10 @@ export default async function DebugPage() {
           ))}
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Sample Products */}
-      {debugData.products && (
+      {/* {debugData.products && (
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4">Sample Products (First 10)</h2>
         <div className="overflow-x-auto">
@@ -199,7 +187,7 @@ export default async function DebugPage() {
           </table>
         </div>
         </div>
-      )}
+      )} */}
 
       {/* Instructions */}
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mt-6">

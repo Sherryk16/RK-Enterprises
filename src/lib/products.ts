@@ -1,591 +1,178 @@
-import { supabase } from './supabase';
+import { client } from "@/sanity/lib/client";
+import { SanityProduct, SanityCategory, SanitySubcategory } from "@/types/sanity";
 
-export type ProductInput = {
-  name: string;
-  slug: string;
-  price: number;
-  original_price?: number;
-  category_id: string;
-  subcategory_id?: string | null;
-  images?: string[];
-  description?: string;
-  detailed_description?: string;
-  colors?: string[];
-  is_featured?: boolean;
-  show_in_office?: boolean;
-  is_molded?: boolean;
-  is_ceo_chair?: boolean;
-  is_gaming_chair?: boolean;
-  is_dining_chair?: boolean;
-  is_visitor_sofa?: boolean;
-  is_study_chair?: boolean;
-  is_outdoor_furniture?: boolean;
-  is_folding_furniture?: boolean;
-};
+// ===============================
+// 🔹 Common product fields (GROQ)
+// ===============================
+const productFields = `
+  _id,
+  name,
+  price,
+  original_price,
+  images,
+  description,
+  detailed_description,
+  colors,
+  is_featured,
+  is_ceo_chair,
+  is_molded,
+  is_gaming_chair,
+  is_dining_chair,
+  is_visitor_sofa,
+  is_study_chair,
+  is_outdoor_furniture,
+  is_folding_furniture,
+  "category": category->{_id, name, "slug": slug.current},
+  "subcategory": subcategory->{_id, name, "slug": slug.current},
+  "slug": slug.current,
+  show_in_office,
+  created_at
+`;
 
-// Get all products with category and subcategory info
-export async function getAllProducts(
-  categorySlug?: string,
-  minPrice?: number,
-  maxPrice?: number,
-  sortBy?: string,
-  searchQuery?: string,
-  page: number = 1,
-  limit: number = 20,
-  subCategorySlug?: string // New parameter for subcategory filtering
-) {
-  let query = supabase
-    .from('products')
-    .select(`
-      *,
-      slug,
-      categories:category_id (
-        id,
-        name,
-        slug
-      ),
-      subcategories:subcategory_id (
-        id,
-        name,
-        slug
-      )
-    `, { count: 'exact' }); // Request exact count
-
-  if (categorySlug) {
-    const { data: category, error: categoryError } = await supabase
-      .from('categories')
-      .select('id')
-      .eq('slug', categorySlug)
-      .single();
-    
-    if (categoryError) throw categoryError;
-    if (category) {
-      query = query.eq('category_id', category.id);
-    }
-  }
-
-  if (subCategorySlug) {
-    const { data: subcategory, error: subcategoryError } = await supabase
-      .from('subcategories')
-      .select('id')
-      .eq('slug', subCategorySlug)
-      .single();
-
-    if (subcategoryError) throw subcategoryError;
-    if (subcategory) {
-      query = query.eq('subcategory_id', subcategory.id);
-    }
-  }
-
-  if (minPrice !== undefined) {
-    query = query.gte('price', minPrice);
-  }
-
-  if (maxPrice !== undefined) {
-    query = query.lte('price', maxPrice);
-  }
-
-  if (searchQuery) {
-    console.log('getAllProducts: Search query received:', searchQuery); // DEBUG LOG
-    const searchPattern = `%${searchQuery}%`;
-    console.log('getAllProducts: Generated searchPattern:', searchPattern); // DEBUG LOG
-
-    // First, find category IDs that match the search query
-    const { data: matchingCategories, error: categorySearchError } = await supabase
-      .from('categories')
-      .select('id')
-      .ilike('name', searchPattern);
-
-    if (categorySearchError) {
-      console.error('Error searching categories:', categorySearchError);
-      // Decide how to handle this error: throw, return empty, or log and continue
-      // For now, we'll log and continue without category-based filtering if it fails
-    }
-    console.log('getAllProducts: Matching categories from search:', matchingCategories); // DEBUG LOG
-
-    const categoryIds = matchingCategories?.map(cat => cat.id) || [];
-    console.log('getAllProducts: Extracted categoryIds:', categoryIds); // DEBUG LOG
-
-    // Build the main search filter
-    let searchFilter = `name.ilike.${searchPattern},description.ilike.${searchPattern}`;
-    if (categoryIds.length > 0) {
-      searchFilter += `,category_id.in.(${categoryIds.join(',')})`;
-    }
-    console.log('getAllProducts: Final searchFilter string:', searchFilter); // DEBUG LOG
-    query = query.or(searchFilter);
-  }
-
-  switch (sortBy) {
-    case 'price-asc':
-      query = query.order('price', { ascending: true });
-      break;
-    case 'price-desc':
-      query = query.order('price', { ascending: false });
-      break;
-    case 'newest':
-      query = query.order('created_at', { ascending: false });
-      break;
-    case 'featured':
-    default:
-      query = query.order('is_featured', { ascending: false }).order('created_at', { ascending: false });
-      break;
-  }
-
-  const start = (page - 1) * limit;
-  const end = start + limit - 1;
-  query = query.range(start, end);
-
-  const { data: products, error, count: totalCount } = await query;
-
-  if (error) {
-    console.error('Supabase query error:', JSON.stringify(error, null, 2));
-    throw error;
-  }
-  return { products: products || [], totalCount: totalCount || 0 };
+// ===============================
+// 🔹 CATEGORY FUNCTIONS
+// ===============================
+export async function getCategories(): Promise<SanityCategory[]> {
+  const query = `*[_type == "category"] | order(name asc)`;
+  return await client.fetch<SanityCategory[]>(query);
 }
 
-// Get products by category ID
-export async function getProductsByCategoryId(categoryId: string) {
-  const { data, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      slug,
-      categories:category_id (
-        id,
-        name,
-        slug
-      ),
-      subcategories:subcategory_id (
-        id,
-        name,
-        slug
-      )
-    `)
-    .eq('category_id', categoryId)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data;
+export async function getCategoryBySlug(slug: string): Promise<SanityCategory | null> {
+  const query = `*[_type == "category" && slug.current == $slug][0]`;
+  return await client.fetch<SanityCategory | null>(query, { slug });
 }
 
-// Get products by category slug
-export async function getProductsByCategory(categorySlug: string) {
-  // First get the category by slug
-  const { data: category, error: categoryError } = await supabase
-    .from('categories')
-    .select('id, name') // Select name here
-    .eq('slug', categorySlug)
-    .single();
+// 🟢 Get all categories (simple)
+export async function getAllCategories(): Promise<SanityCategory[]> {
+  const query = `*[_type == "category"]{
+    _id,
+    name,
+    "slug": slug.current
+  } | order(name asc)`;
 
-  if (categoryError) throw categoryError;
-  if (!category) return [];
-
-  console.log(`Fetching products for category: ${categorySlug} (ID: ${category.id})`);
-
-  // Fetch all subcategories for this category
-  const { data: subcategories, error: subcategoryError } = await supabase
-    .from('subcategories')
-    .select('id, name, slug') // Select slug as well for debugging
-    .eq('category_id', category.id);
-
-  if (subcategoryError) throw subcategoryError;
-
-  const subcategoryIds = (subcategories || []).map(sub => sub.id);
-  console.log(`Subcategories found for ${category.name}:`, subcategories);
-  console.log(`Subcategory IDs:`, subcategoryIds);
-
-  // Build the query to include products directly under the category or within its subcategories
-  let productQuery = supabase
-    .from('products')
-    .select(`
-      *,
-      slug,
-      categories:category_id (
-        id,
-        name,
-        slug
-      ),
-      subcategories:subcategory_id (
-        id,
-        name,
-        slug
-      )
-    `);
-
-  // Construct the OR condition
-  const orConditions = [`category_id.eq.${category.id}`];
-  if (subcategoryIds.length > 0) {
-    orConditions.push(`subcategory_id.in.(${subcategoryIds.join(',')})`);
-  }
-
-  productQuery = productQuery.or(orConditions.join(','));
-
-  const { data, error } = await productQuery.order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('getProductsByCategory: Supabase query error:', JSON.stringify(error, null, 2));
-    throw error;
-  }
-  return data;
+  return await client.fetch<SanityCategory[]>(query);
 }
 
-// Get products by subcategory
-export async function getProductsBySubcategory(subcategoryId: string) {
-  const { data, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      slug,
-      categories:category_id (
-        id,
-        name,
-        slug
-      ),
-      subcategories:subcategory_id (
-        id,
-        name,
-        slug
-      )
-    `)
-    .eq('subcategory_id', subcategoryId)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data;
-}
-
-// Get featured products
-export async function getFeaturedProducts() {
-  const { data, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      slug,
-      categories:category_id (
-        id,
-        name,
-        slug
-      ),
-      subcategories:subcategory_id (
-        id,
-        name,
-        slug
-      )
-    `)
-    .eq('is_featured', true)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data;
-}
-
-// Get office products
-export async function getOfficeProducts() {
-  const { data, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      slug,
-      categories:category_id (
-        id,
-        name,
-        slug
-      ),
-      subcategories:subcategory_id (
-        id,
-        name,
-        slug
-      )
-    `)
-    .eq('show_in_office', true)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data;
-}
-
-// Get products by specific flags
-export async function getProductsByFlag(flag: string) {
-  const { data, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      slug,
-      categories:category_id (
-        id,
-        name,
-        slug
-      ),
-      subcategories:subcategory_id (
-        id,
-        name,
-        slug
-      )
-    `)
-    .eq(flag, true)
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data;
-}
-
-// Get products by color
-export async function getProductsByColor(color: string) {
-  const { data, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      slug,
-      categories:category_id (
-        id,
-        name,
-        slug
-      ),
-      subcategories:subcategory_id (
-        id,
-        name,
-        slug
-      )
-    `)
-    .contains('colors', [color])
-    .order('created_at', { ascending: false });
-
-  if (error) throw error;
-  return data;
-}
-
-// Get all unique colors
-export async function getAllColors() {
-  const { data, error } = await supabase
-    .from('products')
-    .select('colors');
-
-  if (error) throw error;
-  
-  const allColors = data.flatMap(product => product.colors || []);
-  return [...new Set(allColors)];
-}
-
-// Get single product by ID
-export async function getProductById(id: string) {
-  const { data, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      slug,
-      categories:category_id (
-        id,
-        name,
-        slug
-      ),
-      subcategories:subcategory_id (
-        id,
-        name,
-        slug
-      )
-    `)
-    .eq('id', id)
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-// Get single product by slug
-export async function getProductBySlug(slug: string) {
-  const { data: product, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      categories:category_id (id, name, slug),
-      subcategories:subcategory_id (id, name, slug)
-    `)
-    .eq('slug', slug)
-    .single();
-
-  if (error) {
-    console.error('getProductBySlug: Supabase query error:', JSON.stringify(error, null, 2));
-    throw error;
-  }
-  return product;
-}
-
-// Create or update product
-export async function upsertProduct(input: ProductInput & { id?: string }) {
-  const productData = {
-    name: input.name,
-    slug: input.slug,
-    price: input.price,
-    original_price: input.original_price || null,
-    category_id: input.category_id,
-    subcategory_id: input.subcategory_id || null,
-    images: input.images || [],
-    description: input.description || null,
-    detailed_description: input.detailed_description || null,
-    colors: input.colors || [],
-    is_featured: !!input.is_featured,
-    show_in_office: !!input.show_in_office,
-    is_molded: !!input.is_molded,
-    is_ceo_chair: !!input.is_ceo_chair,
-    is_gaming_chair: !!input.is_gaming_chair,
-    is_dining_chair: !!input.is_dining_chair,
-    is_visitor_sofa: !!input.is_visitor_sofa,
-    is_study_chair: !!input.is_study_chair,
-    is_outdoor_furniture: !!input.is_outdoor_furniture,
-    is_folding_furniture: !!input.is_folding_furniture,
-  };
-
-  if (input.id) {
-    const { data, error } = await supabase
-      .from('products')
-      .update(productData)
-      .eq('id', input.id)
-      .select('*')
-      .single();
-    if (error) throw error;
-    return data;
-  } else {
-    const { data, error } = await supabase
-      .from('products')
-      .insert([productData])
-      .select('*')
-      .single();
-    if (error) throw error;
-    return data;
-  }
-}
-
-// Delete product
-export async function deleteProduct(id: string) {
-  const { error } = await supabase
-    .from('products')
-    .delete()
-    .eq('id', id);
-
-  if (error) throw error;
-}
-
-// Get all categories
-export async function getAllCategories() {
-  const { data, error } = await supabase
-    .from('categories')
-    .select('*')
-    .order('name');
-
-  if (error) throw error;
-  return data;
-}
-
-// Get category by slug
-export async function getCategoryBySlug(slug: string) {
-  const { data, error } = await supabase
-    .from('categories')
-    .select('*')
-    .eq('slug', slug)
-    .single();
-
-  if (error) throw error;
-  return data;
-}
-
-// Get all subcategories
-export async function getAllSubcategories() {
-  const { data, error } = await supabase
-    .from('subcategories')
-    .select(`
-      *,
-      categories:category_id (
-        id,
-        name,
-        slug
-      )
-    `)
-    .order('name');
-
-  if (error) throw error;
-  return data;
-}
-
-// Get categories with their subcategories
-export async function getCategoriesWithSubcategories() {
-  const { data, error } = await supabase
-    .from('categories')
-    .select(`
-      id,
+// 🟢 Get categories with subcategories
+export async function getCategoriesWithSubcategories(): Promise<
+  (SanityCategory & { subcategories: SanitySubcategory[] })[]
+> {
+  const query = `*[_type == "category"]{
+    _id,
+    name,
+    "slug": slug.current,
+    "subcategories": *[_type == "subcategory" && references(^._id)]{
+      _id,
       name,
-      slug,
-      subcategories(id, name, slug)
-    `)
-    .order('name');
+      "slug": slug.current
+    }
+  } | order(name asc)`;
 
-  if (error) {
-    console.error('getCategoriesWithSubcategories: Supabase query error:', JSON.stringify(error, null, 2));
-    throw error;
+  return await client.fetch(query);
+}
+
+// ===============================
+// 🔹 SUBCATEGORY FUNCTIONS
+// ===============================
+export async function getSubcategories(): Promise<SanitySubcategory[]> {
+  const query = `*[_type == "subcategory"] | order(name asc)`;
+  return await client.fetch<SanitySubcategory[]>(query);
+}
+
+export async function getSubcategoriesByCategoryRef(
+  categoryId: string
+): Promise<SanitySubcategory[]> {
+  const query = `*[_type == "subcategory" && references($categoryId)] | order(name asc)`;
+  return await client.fetch<SanitySubcategory[]>(query, { categoryId });
+}
+
+export async function getSubcategoryBySlug(slug: string): Promise<SanitySubcategory | null> {
+  const query = `*[_type == "subcategory" && slug.current == $slug][0]`;
+  return await client.fetch<SanitySubcategory | null>(query, { slug });
+}
+
+// 🟢 Get all subcategories (used in shop page)
+export async function getAllSubcategories(): Promise<SanitySubcategory[]> {
+  const query = `*[_type == "subcategory"]{
+    _id,
+    name,
+    "slug": slug.current,
+    "category": category->{_id, name, "slug": slug.current}
+  } | order(name asc)`;
+
+  return await client.fetch<SanitySubcategory[]>(query);
+}
+
+// ===============================
+// 🔹 PRODUCT FUNCTIONS
+// ===============================
+
+// 🟢 Get all products
+export async function getAllProducts(): Promise<{ products: SanityProduct[] }> {
+  const query = `*[_type == "product"]{ ${productFields} } | order(created_at desc)`;
+
+  try {
+    const products = await client.fetch<SanityProduct[]>(query);
+    console.log("✅ Total products fetched:", products.length);
+    return { products };
+  } catch (error) {
+    console.error("❌ Error fetching all products:", error);
+    return { products: [] };
   }
-  return data;
 }
 
-// Get subcategories that should appear under multiple categories
-export async function getSharedSubcategories() {
-  return []; // Return an empty array as per current structure (subcategories are linked directly)
+// 🟢 Get products by category
+export async function getProductsByCategory(
+  slug: string
+): Promise<{ category: SanityCategory; products: SanityProduct[] }> {
+  const category = await getCategoryBySlug(slug);
+  if (!category) throw new Error(`Category not found for slug: ${slug}`);
+
+  const query = `*[_type == "product" && references($categoryId)]{ ${productFields} } | order(created_at desc)`;
+  const products = await client.fetch<SanityProduct[]>(query, { categoryId: category._id });
+
+  return { category, products };
 }
 
-// Debug function to fetch all existing categories (for RLS troubleshooting)
-export async function getExistingCategoriesForDebug() {
-  const { data, error } = await supabase.from('categories').select('id, name, slug');
-  if (error) {
-    console.error('getExistingCategoriesForDebug: Error fetching categories:', JSON.stringify(error, null, 2));
-    return null;
-  }
-  return data;
+// 🟢 Get products by subcategory
+export async function getProductsBySubcategory(
+  slug: string
+): Promise<{ subcategory: SanitySubcategory; products: SanityProduct[] }> {
+  const subcategory = await getSubcategoryBySlug(slug);
+  if (!subcategory) throw new Error(`Subcategory not found for slug: ${slug}`);
+
+  const query = `*[_type == "product" && references($subcategoryId)]{ ${productFields} } | order(created_at desc)`;
+  const products = await client.fetch<SanityProduct[]>(query, { subcategoryId: subcategory._id });
+
+  return { subcategory, products };
 }
 
-// Debug function to fetch raw product data
-export async function getRawProductSample() {
-  const { data, error } = await supabase
-    .from('products')
-    .select(`
-      id,
-      name,
-      category_id,
-      subcategory_id,
-      show_in_office,
-      slug,
-      categories:category_id (id, name, slug)
-    `)
-    .limit(10); // Fetch a small sample
+// 🟢 Get related products
+export async function getRelatedProducts(
+  categoryId: string,
+  currentProductId: string
+): Promise<SanityProduct[]> {
+  const query = `*[_type == "product" && category._ref == $categoryId && _id != $currentProductId]{
+    ${productFields}
+  } | order(created_at desc)[0...5]`;
 
-  if (error) {
-    console.error('Error fetching raw product sample:', JSON.stringify(error, null, 2));
-    throw error;
-  }
-  return data;
+  const products = await client.fetch<SanityProduct[]>(query, { categoryId, currentProductId });
+  return products || [];
 }
 
-// Get related products (from the same category, excluding the current product)
-export async function getRelatedProducts(categoryId: string, currentProductId: string) {
-  const { data, error } = await supabase
-    .from('products')
-    .select(`
-      *,
-      slug,
-      categories:category_id (
-        id,
-        name,
-        slug
-      ),
-      subcategories:subcategory_id (
-        id,
-        name,
-        slug
-      )
-    `)
-    .eq('category_id', categoryId)
-    .neq('id', currentProductId) // Exclude the current product
-    .order('created_at', { ascending: false })
-    .limit(5); // Limit to 5 related products
-
-  if (error) throw error;
-  return data;
+// 🟢 Get single product by slug
+export async function getProductBySlug(slug: string): Promise<SanityProduct | null> {
+  const query = `*[_type == "product" && slug.current == $slug][0]{ ${productFields} }`;
+  return await client.fetch<SanityProduct | null>(query, { slug });
 }
+
+// 🟢 Get featured products
+export async function getFeaturedProducts(): Promise<SanityProduct[]> {
+  const query = `*[_type == "product" && is_featured == true]{ ${productFields} } | order(created_at desc)[0...10]`;
+  return await client.fetch<SanityProduct[]>(query);
+}
+
+// ===============================
+// ✅ Export all types
+// ===============================
+export type { SanityProduct, SanityCategory, SanitySubcategory };

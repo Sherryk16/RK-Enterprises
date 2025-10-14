@@ -1,359 +1,320 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import Footer from '@/components/Footer';
-import ProductCard from '@/components/ProductCard';
-// Removed import of SearchBar
-import { getAllProducts, getAllCategories } from '@/lib/products';
-import { useSearchParams } from 'next/navigation'; // Import useSearchParams
-
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  price: number;
-  original_price?: number | null;
-  images?: string[];
-  category?: string;
-  categories?: { name: string; id: string; slug: string };
-  is_new?: boolean;
-}
+import { useState, useEffect } from 'react'
+import Footer from '@/components/Footer'
+import ProductCard from '@/components/ProductCard'
+import {
+  getAllProducts,
+  getAllCategories,
+  getAllSubcategories,
+  SanityCategory,
+  SanitySubcategory,
+  SanityProduct,
+} from '@/lib/products'
+import { useSearchParams } from 'next/navigation'
 
 export default function ShopPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [priceRange, setPriceRange] = useState('');
-  const [sortBy, setSortBy] = useState('featured');
-  const searchParams = useSearchParams();
-  const initialSearchQuery = searchParams.get('search') || '';
-  // Use initialSearchQuery directly to set searchTerm state
-  const [searchTerm, setSearchTerm] = useState(initialSearchQuery);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [productsPerPage] = useState(10);
-  const [totalProducts, setTotalProducts] = useState(0);
+  const [allProducts, setAllProducts] = useState<SanityProduct[]>([])
+  const [filteredProducts, setFilteredProducts] = useState<SanityProduct[]>([])
+  const [categories, setCategories] = useState<SanityCategory[]>([])
+  const [subcategories, setSubcategories] = useState<SanitySubcategory[]>([])
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedSubcategory, setSelectedSubcategory] = useState('')
+  const [priceRange, setPriceRange] = useState('')
+  const [sortBy, setSortBy] = useState('featured')
+  const searchParams = useSearchParams()
+  const initialSearchQuery = searchParams.get('search') || ''
+  const [searchTerm, setSearchTerm] = useState(initialSearchQuery)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [productsPerPage] = useState(20)
 
+  // 🔹 Update search term when URL changes
   useEffect(() => {
-    // Update searchTerm if the URL search parameter changes
-    const currentSearchQuery = searchParams.get('search') || '';
-    console.log('ShopPage: currentSearchQuery from URL:', currentSearchQuery); // DEBUG LOG
+    const currentSearchQuery = searchParams.get('search') || ''
     if (currentSearchQuery !== searchTerm) {
-      setSearchTerm(currentSearchQuery);
-      setCurrentPage(1); // Reset to first page on new search
+      setSearchTerm(currentSearchQuery)
+      setCurrentPage(1)
     }
-  }, [searchParams, searchTerm]);
+  }, [searchParams, searchTerm])
 
+  // 🔹 Fetch all products, categories, subcategories
   useEffect(() => {
-    const getPriceBounds = () => {
-      let minPrice: number | undefined;
-      let maxPrice: number | undefined;
+    const fetchInitialData = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const [productsResult, categoriesData, subcategoriesData] = await Promise.all([
+          getAllProducts(),
+          getAllCategories(),
+          getAllSubcategories(),
+        ])
+
+        setAllProducts(productsResult.products || [])
+        setCategories(categoriesData || [])
+        setSubcategories(subcategoriesData || [])
+      } catch (err: unknown) {
+        console.error('Error fetching shop data:', err)
+        let errorMessage = 'Failed to fetch products. Please try again later.'
+        if (err instanceof Error) errorMessage = err.message
+        else if (typeof err === 'string') errorMessage = err
+        setError(errorMessage)
+        setAllProducts([])
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchInitialData()
+  }, [])
+
+  // 🔹 Filter and sort products whenever filters change
+  useEffect(() => {
+    let filtered = [...allProducts]
+
+    // Search filter with relevance scoring
+    if (searchTerm) {
+      const lowerSearchTerm = searchTerm.toLowerCase()
+      const productsWithScore = filtered.map((product) => {
+        let score = 0
+        const productName = product.name.toLowerCase()
+        const productDescription = product.description?.toLowerCase() || ''
+        const productCategory = product.category?.name.toLowerCase() || ''
+        const productSubcategory = product.subcategory?.name.toLowerCase() || ''
+
+        if (productName === lowerSearchTerm) score += 1000
+        else if (productName.startsWith(lowerSearchTerm)) score += 500
+        else if (productName.includes(lowerSearchTerm)) score += 300
+
+        if (productCategory === lowerSearchTerm) score += 200
+        else if (productCategory.includes(lowerSearchTerm)) score += 150
+
+        if (productSubcategory === lowerSearchTerm) score += 180
+        else if (productSubcategory.includes(lowerSearchTerm)) score += 120
+
+        if (productDescription.includes(lowerSearchTerm)) score += 50
+
+        const searchWords = lowerSearchTerm.split(' ').filter((w) => w.length > 2)
+        searchWords.forEach((w) => {
+          if (productName.includes(w)) score += 20
+          if (productCategory.includes(w)) score += 10
+          if (productDescription.includes(w)) score += 5
+        })
+
+        return { product, score }
+      })
+
+      filtered = productsWithScore
+        .filter((i) => i.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .map((i) => i.product)
+    }
+
+    // Category filter
+    if (selectedCategory) {
+      filtered = filtered.filter((p) => p.category?.slug === selectedCategory)
+    }
+
+    // Subcategory filter
+    if (selectedSubcategory) {
+      filtered = filtered.filter((p) => p.subcategory?.slug === selectedSubcategory)
+    }
+
+    // Price filter
+    if (priceRange) {
       switch (priceRange) {
         case 'under-10000':
-          maxPrice = 10000;
-          break;
+          filtered = filtered.filter((p) => p.price < 10000)
+          break
         case '10000-25000':
-          minPrice = 10000;
-          maxPrice = 25000;
-          break;
+          filtered = filtered.filter((p) => p.price >= 10000 && p.price <= 25000)
+          break
         case '25000-50000':
-          minPrice = 25000;
-          maxPrice = 50000;
-          break;
+          filtered = filtered.filter((p) => p.price >= 25000 && p.price <= 50000)
+          break
         case 'above-50000':
-          minPrice = 50000;
-          break;
+          filtered = filtered.filter((p) => p.price > 50000)
+          break
+      }
+    }
+
+    // Sort (relevance → price → newest)
+    if (!searchTerm) {
+      switch (sortBy) {
+        case 'price-asc':
+          filtered.sort((a, b) => a.price - b.price)
+          break
+        case 'price-desc':
+          filtered.sort((a, b) => b.price - a.price)
+          break
+        case 'newest':
+          filtered.sort(
+            (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
+          )
+          break
         default:
-          break;
+          filtered.sort((a, b) => (b.is_featured ? 1 : 0) - (a.is_featured ? 1 : 0))
       }
-      return { minPrice, maxPrice };
-    };
+    }
 
-    const fetchShopData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const { minPrice, maxPrice } = getPriceBounds();
-        console.log('ShopPage: Fetching products with searchTerm:', searchTerm); // DEBUG LOG
+    setFilteredProducts(filtered)
+    setCurrentPage(1)
+  }, [allProducts, searchTerm, selectedCategory, selectedSubcategory, priceRange, sortBy])
 
-        const [productsResult, categoriesData] = await Promise.all([
-          getAllProducts(selectedCategory, minPrice, maxPrice, sortBy, searchTerm, currentPage, productsPerPage),
-          getAllCategories()
-        ]);
-
-        setProducts(productsResult.products || []);
-        setTotalProducts(productsResult.totalCount || 0);
-        setCategories((categoriesData as Category[]) || []);
-      } catch (err: unknown) {
-        console.error('Error fetching shop data:', err);
-        let errorMessage = 'Failed to fetch products. Please try again later.';
-        if (err instanceof Error) {
-          errorMessage = err.message;
-        } else if (typeof err === 'string') {
-          errorMessage = err;
-        }
-        setError(errorMessage);
-        setProducts([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchShopData();
-  }, [selectedCategory, priceRange, sortBy, searchTerm, currentPage, productsPerPage]); // Add productsPerPage to dependencies
+  // 🔹 Filtered subcategories by selected category
+  const filteredSubcategories = selectedCategory
+    ? subcategories.filter((sub) => sub.category?.slug === selectedCategory)
+    : subcategories
 
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedCategory(e.target.value);
-    setCurrentPage(1);
-  };
+    setSelectedCategory(e.target.value)
+    setSelectedSubcategory('')
+  }
+
+  const handleSubcategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedSubcategory(e.target.value)
+  }
 
   const handlePriceRangeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setPriceRange(e.target.value);
-    setCurrentPage(1);
-  };
+    setPriceRange(e.target.value)
+  }
 
   const handleSortByChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSortBy(e.target.value);
-    setCurrentPage(1);
-  };
+    setSortBy(e.target.value)
+  }
 
-  // const handleSearch = (query: string) => {
-  //   setSearchTerm(query);
-  //   setCurrentPage(1);
-  // };
+  // Pagination logic
+  const totalProducts = filteredProducts.length
+  const startIndex = (currentPage - 1) * productsPerPage
+  const currentProducts = filteredProducts.slice(startIndex, startIndex + productsPerPage)
 
-  const totalPages = Math.ceil(totalProducts / productsPerPage);
-
-  // Helper function to generate an array of page numbers for pagination
-  const generatePaginationNumbers = (currentPage: number, totalPages: number, maxPageButtons: number = 5) => {
-    const pageNumbers: (number | string)[] = [];
-    const halfMax = Math.floor(maxPageButtons / 2);
-
-    if (totalPages <= maxPageButtons) {
-      for (let i = 1; i <= totalPages; i++) {
-        pageNumbers.push(i);
-      }
-    } else {
-      // Always add the first page
-      pageNumbers.push(1);
-
-      // Determine start and end for the middle block
-      let start = Math.max(2, currentPage - halfMax);
-      let end = Math.min(totalPages - 1, currentPage + halfMax);
-
-      // Adjust start/end if near boundaries
-      if (currentPage - 1 < halfMax) {
-        end = maxPageButtons - 1;
-      }
-      if (totalPages - currentPage < halfMax + 1) {
-        start = totalPages - maxPageButtons + 2;
-      }
-      
-      // Add ellipsis if needed after the first page
-      if (start > 2) {
-        pageNumbers.push('...');
-      }
-
-      // Add middle pages
-      for (let i = start; i <= end; i++) {
-        pageNumbers.push(i);
-      }
-
-      // Add ellipsis if needed before the last page
-      if (end < totalPages - 1) {
-        pageNumbers.push('...');
-      }
-
-      // Always add the last page (if not already included and totalPages > 1)
-      if (totalPages > 1 && !pageNumbers.includes(totalPages)) {
-        pageNumbers.push(totalPages);
-      }
-    }
-
-    return pageNumbers;
-  };
-
-  const handlePageChange = (pageNumber: number) => {
-    if (pageNumber > 0 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
+  // const handlePageChange = (page: number) => {
+  //   if (page > 0 && page <= totalPages) {
+  //     setCurrentPage(page)
+  //     window.scrollTo({ top: 0, behavior: 'smooth' })
+  //   }
+  // }
 
   return (
     <div className="min-h-screen bg-white">
-      
       <main>
-        {/* Page Header */}
+        {/* Header */}
         <section className="bg-gradient-to-r from-amber-600 to-orange-600 text-white py-16">
           <div className="container mx-auto px-4 text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Shop All Products</h1>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">
+              {searchTerm ? `Search Results for "${searchTerm}"` : 'Shop All Products'}
+            </h1>
             <p className="text-xl text-amber-100 max-w-3xl mx-auto">
-              Discover our complete collection of premium imported furniture. Best quality at unbeatable prices.
+              {searchTerm
+                ? `Found ${totalProducts} product${totalProducts !== 1 ? 's' : ''} matching your search`
+                : 'Discover our complete collection of premium imported furniture.'}
             </p>
           </div>
         </section>
 
-        {/* Filters & Sorting */}
+        {/* Filters */}
         <section className="py-8 bg-gray-50 border-b">
-          <div className="container mx-auto px-4">
-            <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-              <div className="flex flex-wrap items-center space-x-4">
-                <select 
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  value={selectedCategory}
-                  onChange={handleCategoryChange}
-                >
-                  <option value="">All Categories</option>
-                  {categories.map((cat: Category) => (
-                    <option key={cat.id} value={cat.slug}>{cat.name}</option>
-                  ))}
-                </select>
-                
-                <select 
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  value={priceRange}
-                  onChange={handlePriceRangeChange}
-                >
-                  <option value="">Price Range</option>
-                  <option value="under-10000">Under PKR 10,000</option>
-                  <option value="10000-25000">PKR 10,000 - 25,000</option>
-                  <option value="25000-50000">PKR 25,000 - 50,000</option>
-                  <option value="above-50000">Above PKR 50,000</option>
-                </select>
+          <div className="container mx-auto px-4 flex flex-col md:flex-row justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <select
+                value={selectedCategory}
+                onChange={handleCategoryChange}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+              >
+                <option value="">All Categories</option>
+                {categories.map((cat) => (
+                  <option key={cat._id} value={cat.slug}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
 
-                {/* Removed Search Bar for Shop Page */}
-                {/* 
-                <div className="md:flex-1 md:max-w-xs">
-                  <SearchBar 
-                    onSearch={handleSearch} 
-                    initialQuery={searchTerm} 
-                    debounceTime={300}
-                  />
-                </div>
-                 */}
-              </div>
+              <select
+                value={selectedSubcategory}
+                onChange={handleSubcategoryChange}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                disabled={!filteredSubcategories.length}
+              >
+                <option value="">All Subcategories</option>
+                {filteredSubcategories.map((sub) => (
+                  <option key={sub._id} value={sub.slug}>
+                    {sub.name}
+                  </option>
+                ))}
+              </select>
 
-              <div className="flex items-center space-x-4">
-                <span className="text-gray-600">Sort by:</span>
-                <select 
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  value={sortBy}
-                  onChange={handleSortByChange}
-                >
-                  <option value="featured">Featured</option>
-                  <option value="price-asc">Price: Low to High</option>
-                  <option value="price-desc">Price: High to Low</option>
-                  <option value="newest">Newest</option>
-                </select>
-              </div>
+              <select
+                value={priceRange}
+                onChange={handlePriceRangeChange}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+              >
+                <option value="">Price Range</option>
+                <option value="under-10000">Under PKR 10,000</option>
+                <option value="10000-25000">PKR 10,000 - 25,000</option>
+                <option value="25000-50000">PKR 25,000 - 50,000</option>
+                <option value="above-50000">Above PKR 50,000</option>
+              </select>
+            </div>
+
+            <div className="flex items-center space-x-4">
+              <span className="text-gray-600">Sort by:</span>
+              <select
+                value={sortBy}
+                onChange={handleSortByChange}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+              >
+                <option value="featured">Featured</option>
+                <option value="price-asc">Price: Low to High</option>
+                <option value="price-desc">Price: High to Low</option>
+                <option value="newest">Newest</option>
+              </select>
             </div>
           </div>
         </section>
 
-        {/* Products Grid */}
+        {/* Product Grid */}
         <section className="py-16">
           <div className="container mx-auto px-4">
             {loading ? (
-              <div className="text-center py-10"><p>Loading products...</p></div>
+              <div className="text-center py-10">Loading products...</div>
             ) : error ? (
-              <div className="text-center py-10 text-red-500"><p>{error}</p></div>
-            ) : products.length === 0 ? (
-              <div className="text-center py-10 text-gray-500"><p>No products found matching your criteria.</p></div>
+              <div className="text-center py-10 text-red-500">{error}</div>
+            ) : currentProducts.length === 0 ? (
+              <div className="text-center py-10 text-gray-500">
+                No products found matching your filters.
+              </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
-                {products.map((product: Product) => {
-                  let discountPercentage = 0;
-                  if (product.original_price && product.original_price > product.price) {
-                    discountPercentage = Math.round(((product.original_price - product.price) / product.original_price) * 100);
-                  }
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
+                {currentProducts.map((p) => {
+                  const discount =
+                    p.original_price && p.original_price > p.price
+                      ? Math.round(((p.original_price - p.price) / p.original_price) * 100)
+                      : 0
 
                   return (
-                <ProductCard
-                  key={product.id}
-                  id={product.id}
-                  name={product.name}
-                  price={product.price}
-                      originalPrice={product.original_price || undefined}
-                      category={product.categories?.name || product.category || 'Unknown'}
-                      slug={product.slug}
-                      rating={4.5}
-                      reviews={0}
-                      isNew={product.is_new || false}
-                      discount={discountPercentage}
-                      image={product.images?.[0] || "/placeholder-product.jpg"}
+                    <ProductCard
+                      key={p._id}
+                      id={p._id}
+                      name={p.name}
+                      price={p.price}
+                      originalPrice={p.original_price}
+                      category={p.category?.name || ''}
+                      slug={p.slug}
+                      rating={p.rating || 4.5}
+                      reviews={p.reviews || 0}
+                      isNew={p.is_new || false}
+                      discount={discount}
+                      image={p.images?.[0] || undefined}
                     />
-                  );
+                  )
                 })}
-            </div>
-            )}
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex justify-center mt-12">
-                <nav className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  {generatePaginationNumbers(currentPage, totalPages).map((page, index) => (
-                    <button
-                      key={page === '...' ? `ellipsis-${index}` : page}
-                      onClick={() => typeof page === 'number' && handlePageChange(page)}
-                      disabled={page === '...'}
-                      className={`px-3 py-2 border border-gray-300 rounded-lg ${
-                        typeof page === 'number'
-                          ? currentPage === page
-                            ? 'bg-amber-600 text-white'
-                            : 'text-gray-700 hover:bg-gray-50'
-                          : 'text-gray-500 cursor-default' // For ellipsis
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
-                </nav>
               </div>
             )}
           </div>
         </section>
-
-        {/* Call to Action */}
-        <section className="py-16 bg-gradient-to-r from-amber-600 to-orange-600 text-white">
-          <div className="container mx-auto px-4 text-center">
-            <h2 className="text-3xl font-bold mb-4">Can&apos;t Find What You&apos;re Looking For?</h2>
-            <p className="text-xl text-amber-100 mb-8 max-w-2xl mx-auto">
-              Contact us for custom orders or bulk purchases. We&apos;re here to help you find the perfect furniture solution.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-white text-amber-600 px-8 py-4 rounded-full font-semibold text-lg hover:bg-gray-100 transition-colors duration-300">
-                Contact Us
-              </button>
-              <button className="border-2 border-white text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-white hover:text-amber-600 transition-colors duration-300">
-                Get Quote
-              </button>
-            </div>
-          </div>
-        </section>
       </main>
-      
+
       <Footer />
     </div>
-  );
+  )
 }

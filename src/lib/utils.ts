@@ -49,37 +49,24 @@ export const simpleSlugify = (text: string) => {
   return slugify(text, { lower: true, strict: true });
 };
 
-export interface RawSubcategoryData {
-  id: string;
-  name: string;
-  slug?: string;
-}
-
-export interface RawCategoryData {
-  id: string;
-  name: string;
-  slug?: string;
-  subcategories?: RawSubcategoryData[]; // Directly use subcategories from DB fetch
-}
+import { SanityCategory, SanitySubcategory } from '@/lib/products';
 
 export interface StructuredSubcategory {
-  id: string;
+  _id: string; // Changed from id to _id
   name: string;
   slug: string;
 }
 
 export interface StructuredCategory {
-  id: string;
+  _id: string; // Changed from id to _id
   name: string;
   slug: string;
   subcategories: StructuredSubcategory[];
 }
 
 export const transformCategories = (
-  categoriesData: RawCategoryData[],
+  categoriesData: (SanityCategory & { subcategories?: SanitySubcategory[] })[], // Update input type
 ): StructuredCategory[] => {
-  // const structuredCategories: StructuredCategory[] = []; // Removed as it was declared but never used
-
   const processCategoryGroup = (groupName: string): StructuredCategory | null => {
     const existingCategory = categoriesData.find(cat =>
       normalizeCategoryName(cat.name) === normalizeCategoryName(groupName)
@@ -90,18 +77,17 @@ export const transformCategories = (
       return null;
     }
 
-    const groupId = existingCategory.id;
-    const groupSlug = existingCategory.slug || simpleSlugify(existingCategory.name);
+    const groupId = existingCategory._id; // Changed from .id to ._id
+    const groupSlug = existingCategory.slug?.current || simpleSlugify(existingCategory.name); // Changed from .slug to .slug?.current
 
-    // Directly use subcategories from the fetched existingCategory
     const subcategories: StructuredSubcategory[] = (existingCategory.subcategories || []).map(sub => ({
-      id: sub.id,
+      _id: sub._id, // Changed from .id to ._id
       name: sub.name,
-      slug: sub.slug || simpleSlugify(sub.name),
+      slug: sub.slug?.current || simpleSlugify(sub.name), // Changed from .slug to .slug?.current
     }));
 
     return {
-      id: groupId,
+      _id: groupId,
       name: groupName,
       slug: groupSlug,
       subcategories,

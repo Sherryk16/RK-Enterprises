@@ -9,15 +9,21 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@sanity/image-url": "^1.2.0",
+    "@sanity/vision": "^4.10.2",
+    "@supabase/ssr": "latest",
     "@supabase/supabase-js": "^2.58.0",
     "csv-parser": "^3.2.0",
     "date-fns": "^4.1.0",
     "next": "15.5.4",
+    "next-sanity": "^11.4.2",
     "node-fetch": "^2.7.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-icons": "^5.5.0",
+    "sanity": "^4.10.2",
     "slugify": "^1.6.6",
+    "styled-components": "^6.1.19",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

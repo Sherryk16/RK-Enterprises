@@ -8,6 +8,8 @@ import { getCategoriesWithSubcategories, getFeaturedProducts } from '@/lib/produ
 import DynamicCustomerReviewsWrapper from '@/components/DynamicCustomerReviewsWrapper'; // Import the new wrapper
 import SEOContent from '@/components/SEOContent'; // Import SEO content component
 import { StructuredCategory, transformCategories } from '@/lib/utils'; // Import necessary types and transformCategories
+import { SanityProduct } from '@/lib/products'; // Import SanityProduct
+import { urlForImage } from '@/sanity/lib/image'; // Import urlForImage
 
 export const metadata: Metadata = {
   title: 'RK Enterprise - #1 Premium Imported Furniture Store in Pakistan | Office & Home Furniture',
@@ -67,19 +69,12 @@ interface HomepageCategory extends StructuredCategory {
   icon?: string;
 }
 
-interface Product {
-  id: string;
-  name: string;
-  slug: string;
-  price: number;
-  original_price?: number;
-  images?: string[];
-  category: string;
-  categories?: { name: string }; // Simplified for homepage
-  rating?: number;
-  reviews?: number;
-  isNew?: boolean;
+// Update Product interface to use SanityProduct
+// The SanityProduct already contains necessary fields like _id, name, price, original_price, images, category, slug, rating, reviews, is_new
+// so we can directly use it or extend it if additional homepage-specific properties are needed.
+interface Product extends SanityProduct {
   discount?: number;
+  isNew?: boolean;
 }
 
 export default async function Home() {
@@ -122,11 +117,16 @@ export default async function Home() {
       getFeaturedProducts(),
     ]);
 
-    const transformedCategories = transformCategories(categoriesRawData || []); // Pass only one argument
+    
+
+    const transformedCategories = transformCategories(categoriesRawData || []);
     categories = transformedCategories;
     featuredProducts = (productsData as Product[]) || [];
 
-    displayCategories = categories;
+    displayCategories = categories.map(cat => ({
+      ...cat,
+      slug: cat.slug, // Remove .current as slug is already a string from transformCategories
+    }));
     displayProducts = featuredProducts;
 
   } catch (error: unknown) {
@@ -180,11 +180,11 @@ export default async function Home() {
 
                 return (
                 <CategoryCard
-                    key={category.id}
+                    key={category._id} // Changed from category.id to category._id
                     title={category.name}
                   description={category.description || ''}
                     href={category.href || `/categories/${category.slug}`}
-                    itemCount={category.subcategories.length || 0} // Display subcategory count
+                    itemCount={category.subcategories.length || 0}
                     icon={category.icon || "🪑"}
                     image={getCategoryImage(category.name)}
                   />
@@ -244,20 +244,22 @@ export default async function Home() {
                   discountPercentage = Math.round(((product.original_price - product.price) / product.original_price) * 100);
                 }
 
+                
+
                 return (
                 <ProductCard
-                  key={product.id}
-                  id={product.id}
+                  key={product._id} // Changed from product.id to product._id
+                  id={product._id} // Changed from product.id to product._id
                   name={product.name}
                   price={product.price}
                     originalPrice={product.original_price ?? undefined}
-                    category={product.categories?.name || product.category} 
-                    slug={product.slug}
+                    category={product.category?.name || ''} // Use product.category?.name
+                    slug={product.slug} // Use product.slug instead of product.slug.current
                     rating={product.rating || 4.5}
                     reviews={product.reviews || 0}
-                    isNew={product.isNew || false}
+                    isNew={product.is_new || false} // Use product.is_new
                     discount={discountPercentage}
-                    image={product.images?.[0] || "/placeholder-product.jpg"}
+                    image={product.images?.[0] ? urlForImage(product.images[0]).url() : "/placeholder-product.jpg"}
                   />
                 );
               })}

@@ -1,6 +1,53 @@
-import { supabase } from './supabase';
+import { SanityProduct, SanityCategory, SanitySubcategory } from "@/types/sanity";
+import { client } from "@/sanity/lib/client";
 
 export interface OrderItemInput {
+  product_id: string;
+  product_name: string;
+  quantity: number;
+}
+
+export interface OrderInput {
+  customer_name: string;
+  whatsapp_number?: string; // Add whatsapp_number to OrderInput
+  total_amount: number;
+  items: OrderItemInput[];
+}
+
+export interface OrderResponse {
+  order: {
+    id: string;
+  };
+  items: OrderItemInput[];
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function createOrder(orderData: OrderInput): Promise<OrderResponse> {
+  try {
+    const response = await fetch('/api/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(orderData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to place order');
+    }
+
+    const result = await response.json();
+    return { order: { id: result.orderId }, items: orderData.items }; // Assuming API returns orderId
+  } catch (error) {
+    console.error('Error in createOrder (client-side):', error);
+    throw error; // Re-throw to be caught by the calling component
+  }
+}
+
+export interface SanityOrderItem {
+  _key: string;
+  _type: 'orderItem';
   product_id: string;
   product_name: string;
   product_slug: string;
@@ -9,74 +56,55 @@ export interface OrderItemInput {
   quantity: number;
 }
 
-export interface OrderInput {
+export interface SanityOrder {
+  _id: string;
+  _createdAt: string;
+  _updatedAt: string;
   customer_name: string;
   customer_email: string;
   customer_phone?: string;
+  whatsapp_number?: string; // Add whatsapp_number to SanityOrder
   shipping_address: string;
   city?: string;
   zip_code?: string;
   total_amount: number;
-  items: OrderItemInput[];
+  items: SanityOrderItem[];
+  created_at: string;
+  status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled'; // Add status to SanityOrder
 }
 
-export async function createOrder(orderData: OrderInput) {
-  const { items, ...orderHeader } = orderData;
+export async function getAllOrders(): Promise<SanityOrder[]> {
+  const query = `*[_type == "order"] | order(created_at desc) {
+    _id,
+    _createdAt,
+    _updatedAt,
+    customer_name,
+    customer_email,
+    customer_phone,
+    whatsapp_number,
+    shipping_address,
+    city,
+    zip_code,
+    total_amount,
+    created_at,
+    status,
+    items[]{
+      _key,
+      _type,
+      product_id,
+      product_name,
+      product_slug,
+      product_image,
+      price_at_purchase,
+      quantity
+    }
+  }`;
 
-  const { data: order, error: orderError } = await supabase
-    .from('orders')
-    .insert(orderHeader)
-    .select('id')
-    .single();
-
-  if (orderError) {
-    console.error('Error creating order:', orderError);
-    throw orderError;
+  try {
+    const orders = await client.fetch<SanityOrder[]>(query);
+    return orders;
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    return [];
   }
-
-  if (!order) {
-    throw new Error('Failed to retrieve order ID after creation.');
-  }
-
-  const orderItems = items.map(item => ({ ...item, order_id: order.id }));
-
-  const { data: createdItems, error: itemsError } = await supabase
-    .from('order_items')
-    .insert(orderItems)
-    .select('*');
-
-  if (itemsError) {
-    console.error('Error creating order items:', itemsError);
-    throw itemsError;
-  }
-
-  return { order, items: createdItems };
 }
-
-export async function getAllOrders() {
-  const { data, error } = await supabase
-    .from('orders')
-    .select(`
-      *,
-      items:order_items (*)
-    `)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('Error fetching orders:', error);
-    throw error;
-  }
-
-  return data;
-}
-
-
-
-
-
-
-
-
-
-
-

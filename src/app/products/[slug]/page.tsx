@@ -1,136 +1,36 @@
-'use client'; // Convert to client component
+import { notFound } from 'next/navigation';
 
-import Image from 'next/image';
-import { getProductBySlug, getRelatedProducts } from '@/lib/products';
-import { notFound, useRouter } from 'next/navigation';
-import ProductCard from '@/components/ProductCard';
-import AddToCartButton from '@/components/AddToCartButton';
-import { useCart } from '@/context/CartContext';
-import { useEffect, useState, use } from 'react'; // Revert to previous imports
-import Link from 'next/link'; // Added missing import for Link
-import { cleanHtml } from '@/lib/utils'; // Import cleanHtml
+import Link from 'next/link';
+import { PortableText } from '@portabletext/react';
+import { getProductBySlug, getAllProducts, SanityProduct, getRelatedProducts } from '@/lib/products'; // Added getRelatedProducts
+import { urlForImage } from '@/sanity/lib/image';
+import { Metadata } from 'next';
+import AddToCartButton from '@/components/AddToCartButton'; // Import the new client component
+import ProductImageGallery from '@/components/ProductImageGallery'; // Import the new ProductImageGallery client component
+import ProductCard from '@/components/ProductCard'; // Import ProductCard
 
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  original_price?: number;
-  images?: string[]; // Updated to array of strings
-  description?: string;
-  detailed_description?: string;
-  colors?: string[];
-  is_featured?: boolean;
-  is_ceo_chair?: boolean;
-  is_molded?: boolean;
-  is_gaming_chair?: boolean;
-  is_dining_chair?: boolean;
-  is_visitor_sofa?: boolean;
-  is_study_chair?: boolean;
-  is_outdoor_furniture?: boolean;
-  is_folding_furniture?: boolean;
-  categories?: { id: string; name: string; slug: string };
-  slug: string;
+interface ProductPageProps {
+  params: { slug: string };
 }
 
-interface AddToCartProduct {
-  id: string;
-  name: string;
-  price: number;
-  image: string; // The specific image URL for the cart item
-  slug: string;
-}
+export default async function ProductPage({ params }: ProductPageProps) {
+  const slug = params.slug;
 
-export default function ProductDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const resolvedParams = use(params);
-  const slug = resolvedParams.slug;
-
-  const router = useRouter();
-  const { addToCart } = useCart();
-
-  const [product, setProduct] = useState<Product | null>(null);
-  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showFullDescription, setShowFullDescription] = useState(false); // State for toggling full description
-  // const [selectedColor, setSelectedColor] = useState<string>(''); // New state for selected color - REMOVED
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0); // State for current image index - REINSTATED
-
-  useEffect(() => {
-    if (slug) {
-      // setCurrentSlug(params.slug); // This line is removed as per the new_code
-    }
-  }, [slug]); // Use the unwrapped slug in dependencies
-
-  useEffect(() => {
-    async function fetchProductData() {
-      if (!slug) return; // Only fetch if slug is available
-
-      setLoading(true);
-      setError(null);
-      try {
-        const fetchedProduct: Product | null = await getProductBySlug(slug);
-        // console.log('ProductDetailPage: Fetched product data:', fetchedProduct); // DEBUG LOG - REMOVED
-
-        if (!fetchedProduct) {
-          console.error('ProductDetailPage: Product not found for slug:', slug);
-          notFound();
-          return;
-        }
-        // Process colors if they are a single comma-separated string within an array
-        if (fetchedProduct.colors && fetchedProduct.colors.length > 0 && typeof fetchedProduct.colors[0] === 'string' && fetchedProduct.colors[0].includes(',')) {
-          fetchedProduct.colors = fetchedProduct.colors[0].split(',').map(color => color.trim());
-        }
-        setProduct(fetchedProduct);
-        setSelectedImageIndex(0); // Reset selected image when product changes
-        // Set initial selected color to the first available color or empty - REMOVED
-        // if (fetchedProduct.images && fetchedProduct.images.length > 0) {
-        //   setSelectedColor(fetchedProduct.images[0].color || '');
-        // } else if (fetchedProduct.colors && fetchedProduct.colors.length > 0) {
-        //   setSelectedColor(fetchedProduct.colors[0]);
-        // } else {
-        //   setSelectedColor('');
-        // }
-
-        if (fetchedProduct?.categories?.id) {
-          const fetchedRelatedProducts: Product[] = await getRelatedProducts(fetchedProduct.categories.id, fetchedProduct.id);
-          setRelatedProducts(fetchedRelatedProducts || []);
-        }
-      } catch (err: unknown) {
-        console.error('Error fetching product for slug:', slug, err);
-        let errorMessage = 'Failed to load product.';
-        if (err instanceof Error) {
-          errorMessage = err.message;
-        }
-        else if (typeof err === 'string') {
-          errorMessage = err;
-        }
-        setError(errorMessage);
-        notFound(); // Still call notFound for unrecoverable errors
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchProductData();
-  }, [slug]); // Use the unwrapped slug in dependencies
-
-  // console.log('ProductDetailPage: Rendering product data:', product); // DEBUG LOG - REMOVED
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <p>Loading product details...</p>
-      </div>
-    );
+  if (!slug) {
+    notFound();
   }
 
-  if (error || !product) {
-    // notFound() is already called in useEffect for unrecoverable errors
-    return (
-      <div className="flex justify-center items-center min-h-screen text-red-600">
-        <p>Error: {error || 'Product not found.'}</p>
-      </div>
-    );
+  const product = await getProductBySlug(slug);
+
+  console.log('[ProductPage] Product colors for display:', product?.colors); // Re-added debug log
+
+  if (!product) {
+    notFound();
   }
+
+  const relatedProducts = product.category?._id
+    ? await getRelatedProducts(product.category._id, product._id)
+    : [];
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-PK', {
@@ -140,396 +40,302 @@ export default function ProductDetailPage({ params }: { params: Promise<{ slug: 
     }).format(price);
   };
 
-  const handleBuyNow = () => {
-    if (product) {
-      addToCart({
-        id: product.id,
-        name: product.name,
-        price: product.price,
-        image: product.images?.[0] || "https://via.placeholder.com/500", // Reverted to first image URL
-        slug: product.slug,
-        quantity: 1,
-      });
-      router.push('/checkout');
-    }
-  };
-
-  // REINSTATED: goToNextImage, goToPrevImage, handleThumbnailClick
-  const goToNextImage = () => {
-    if (product && product.images && product.images.length > 1) {
-      setSelectedImageIndex((prevIndex) => (prevIndex + 1) % product.images!.length);
-    }
-  };
-
-  const goToPrevImage = () => {
-    if (product && product.images && product.images.length > 1) {
-      setSelectedImageIndex((prevIndex) => (prevIndex - 1 + product.images!.length) % product.images!.length);
-    }
-  };
-
-  const handleThumbnailClick = (index: number) => {
-    setSelectedImageIndex(index);
-  };
-
-  // REMOVED: getDisplayedImageUrl
-  // const getDisplayedImageUrl = () => {
-  //   if (!product?.images || product.images.length === 0) {
-  //     return "/placeholder-product.jpg";
-  //   }
-  //   // If only one image, return the first image
-  //   if (product.images.length === 1) {
-  //     return product.images[0].url;
-  //   }
-  //   // Try to find a color-specific image
-  //   const colorSpecificImage = product.images.find(img => img.color === selectedColor);
-  //   return colorSpecificImage ? colorSpecificImage.url : product.images[0].url; // Fallback to first image
-  // };
-
-  const renderedTruncatedDescription = product.detailed_description ? cleanHtml(product.detailed_description).substring(0, 150) + '...' : '';
-
   return (
-    <div className="min-h-screen bg-white">
-      {product && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Product",
-              "name": product.name,
-              "image": product.images && product.images.length > 0 && product.images[0] ? product.images[0] : "https://via.placeholder.com/500", // Directly use first image URL with robust fallback
-              "description": product.description || product.detailed_description || "",
-              "sku": product.id, // Using product ID as SKU
-              "offers": {
-                "@type": "Offer",
-                "url": `https://www.rkenterprises.com/products/${product.slug}`,
-                "priceCurrency": "PKR",
-                "price": product.price,
-                "itemCondition": "https://schema.org/NewCondition",
-                "availability": "https://schema.org/InStock", // Assuming products are generally in stock
-                "seller": {
-                  "@type": "Organization",
-                  "name": "RK Enterprise"
-                }
-              },
-              "aggregateRating": {
-                "@type": "AggregateRating",
-                "ratingValue": "4.5", // Default rating value
-                "reviewCount": "10" // Default review count
-              },
-              "brand": {
-                "@type": "Brand",
-                "name": "RK Enterprise"
-              }
-            })
-          }}
-        />
-      )}
-      <main>
-        {/* Breadcrumb */}
-        <section className="py-2 bg-gray-50">
-          <div className="container mx-auto px-4">
-            <nav className="flex items-center space-x-2 text-sm">
-              <Link href="/" className="text-gray-500 hover:text-amber-600">Home</Link>
-              <span className="text-gray-400">/</span>
-              <Link href="/shop" className="text-gray-500 hover:text-amber-600">Shop</Link>
-              <span className="text-gray-400">/</span>
-              <span className="text-gray-900">{product.name}</span>
-            </nav>
+    <div className="min-h-screen bg-white text-gray-800">
+      <main className="container mx-auto px-4 py-8 md:py-12 lg:py-16">
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
+          {/* Product Image Gallery */}
+          <div className="lg:w-1/2">
+            <ProductImageGallery images={product.images as { _key: string; _type: 'image'; asset: { _ref: string; _type: 'reference' } }[] | undefined} productName={product.name} />
           </div>
-        </section>
 
-        {/* Product Details */}
-        <section className="py-8">
-          <div className="container mx-auto px-4">
-            <div className="grid lg:grid-cols-2 gap-8">
-              {/* Product Images - Always on top for mobile */}
-              <div className="space-y-4">
-                <div className="relative aspect-w-1 aspect-h-1 bg-gray-100 rounded-2xl overflow-hidden md:max-w-md mx-auto">
-                  {product.images && product.images.length > 0 ? (
-                    <>
-                      <Image
-                        src={product.images?.[selectedImageIndex] || "https://via.placeholder.com/500"} // Use selectedImageIndex with robust fallback
-                        alt={product.name}
-                        width={500}
-                        height={500}
-                        className="w-full h-full object-contain"
-                      />
-                      {product.images && product.images.length > 1 && (
-                        <>
-                          <button
-                            onClick={goToPrevImage}
-                            className="absolute left-0 top-1/2 -translate-y-1/2 bg-gray-800 bg-opacity-50 text-white p-2 rounded-full z-10 hover:bg-opacity-75 transition-colors ml-2"
-                            aria-label="Previous image"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={goToNextImage}
-                            className="absolute right-0 top-1/2 -translate-y-1/2 bg-gray-800 bg-opacity-50 text-white p-2 rounded-full z-10 hover:bg-opacity-75 transition-colors mr-2"
-                            aria-label="Next image"
-                            >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                            </svg>
-                          </button>
-                        </>
-                      )}
-                    </>
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-4xl opacity-40">
-                      🪑
-                    </div>
-                  )}
-                </div>
-                
-                {/* Additional Images (Thumbnails) */}
-                {product.images && product.images.length > 1 && (
-                  <div className="grid grid-cols-4 gap-2 mt-4 max-w-md mx-auto">
-                    {product.images.map((imageUrl, index) => (
-                      <div
-                        key={index}
-                        className={`aspect-square bg-gray-100 rounded-lg overflow-hidden cursor-pointer border-2 ${index === selectedImageIndex ? 'border-amber-500' : 'border-transparent'}`}
-                        onClick={() => handleThumbnailClick(index)}
-                      >
-                        <Image
-                          src={imageUrl || "https://via.placeholder.com/100"} // Robust external placeholder for thumbnails
-                          alt={`${product.name} thumbnail`}
-                          width={100}
-                          height={100}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+          {/* Product Details */}
+          <div className="lg:w-1/2">
+            <nav className="text-sm text-gray-500 mb-2">
+              <Link href="/" className="hover:underline">Home</Link> / <Link href="/shop" className="hover:underline">Shop</Link> /{' '}
+              {product.category && (
+                <Link href={`/categories/${product.category.slug}`} className="hover:underline">
+                  {product.category.name}
+                </Link>
+              )}
+              {product.subcategory && (
+                <>
+                  {' '} /{` `}
+                  <Link href={`/categories/${product.category?.slug}/${product.subcategory.slug}`} className="hover:underline">
+                    {product.subcategory.name}
+                  </Link>
+                </>
+              )}
+              {' '} /{` `}
+              <span className="text-gray-700 font-medium">{product.name}</span>
+            </nav>
 
-              {/* Product Info - Below images on mobile, next to images on desktop */}
-              <div className="space-y-4 mt-6 lg:mt-0">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900 mb-1">{product.name}</h1>
-                  <p className="text-gray-600 text-sm">{product.categories?.name}</p>
-                </div>
+            <p className="text-sm text-amber-600 uppercase tracking-wide mb-2">{product.category?.name || 'Category'}</p>
+            <h1 className="text-3xl lg:text-4xl font-bold mb-3">{product.name}</h1>
 
-                {/* Price */}
-                <div className="flex items-center space-x-3">
-                  <span className="text-3xl font-bold text-gray-900">
-                    {formatPrice(product.price)}
+            <div className="flex items-center space-x-2 mb-4">
+              {product.original_price && product.original_price > product.price ? (
+                <>
+                  <span className="text-2xl font-bold text-amber-600">{formatPrice(product.price)}</span>
+                  <span className="text-lg text-gray-500 line-through">{formatPrice(product.original_price)}</span>
+                  <span className="ml-2 bg-red-500 text-white text-sm px-2 py-1 rounded-full font-semibold">
+                    {Math.round(((product.original_price - product.price) / product.original_price) * 100)}% OFF
                   </span>
-                  {product.original_price && product.original_price > product.price && (
-                    <span className="text-xl text-gray-500 line-through">
-                      {formatPrice(product.original_price)}
-                    </span>
-                  )}
-                  {product.original_price && product.original_price > product.price && (
-                    <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded-full text-sm font-semibold">
-                      {Math.round(((product.original_price - product.price) / product.original_price) * 100)}% OFF
-                    </span>
-                  )}
-                </div>
+                </>
+              ) : (
+                <span className="text-2xl font-bold text-amber-600">{formatPrice(product.price)}</span>
+              )}
+            </div>
 
-                {/* Available Colors - Now dynamic and interactive */}
-                {product.colors && product.colors.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Available Colors</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {product.colors.map((color, index) => (
-                        <span
+           {/* Available Colors Section */}
+            {product.colors && product.colors.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold mb-2">Available Colors</h3>
+                <div className="flex flex-wrap gap-2">
+                  {(() => {
+                    // Color name to hex mapping
+                    const colorMap: { [key: string]: string } = {
+                      'black': '#000000',
+                      'white': '#FFFFFF',
+                      'grey': '#808080',
+                      'gray': '#808080',
+                      'red': '#FF0000',
+                      'blue': '#0000FF',
+                      'green': '#008000',
+                      'yellow': '#FFFF00',
+                      'orange': '#FFA500',
+                      'purple': '#800080',
+                      'pink': '#FFC0CB',
+                      'brown': '#A52A2A',
+                      'beige': '#F5F5DC',
+                      'navy': '#000080',
+                      'maroon': '#800000',
+                      'teal': '#008080',
+                      'olive': '#808000',
+                      'lime': '#00FF00',
+                      'cyan': '#00FFFF',
+                      'magenta': '#FF00FF',
+                      'silver': '#C0C0C0',
+                      'gold': '#FFD700',
+                      'cream': '#FFFDD0',
+                      'ivory': '#FFFFF0',
+                      'tan': '#D2B48C',
+                    };
+                    
+                    // Get the raw colors data
+                    let colorsArray: string[] = [];
+                    
+                    // Convert to string and extract color names
+                    const colorString = JSON.stringify(product.colors);
+                    
+                    // Extract all quoted words (color names)
+                    const matches = colorString.match(/\\?"([A-Za-z]+)\\?"/g);
+                    
+                    if (matches) {
+                      colorsArray = matches.map(m => 
+                        m.replace(/\\/g, '').replace(/"/g, '').trim()
+                      );
+                      // Remove duplicates
+                      colorsArray = [...new Set(colorsArray)];
+                    }
+                    
+                    console.log('Extracted colors:', colorsArray);
+                    
+                    return colorsArray.map((colorName: string, index: number) => {
+                      const lowerColor = colorName.toLowerCase();
+                      const hexColor = colorMap[lowerColor] || lowerColor;
+                      
+                      return (
+                        <div
                           key={index}
-                          className="w-7 h-7 rounded-full border border-gray-300 shadow-sm cursor-pointer"
-                          style={{ backgroundColor: color.toLowerCase() }}
-                          title={color}
-                          aria-label={color}
-                          // onClick={() => setSelectedColor(color)} // Removed color selection logic
-                        ></span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Description */}
-                {product.description && (
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">Description</h3>
-                    <div
-                      className="text-gray-700 text-base"
-                      dangerouslySetInnerHTML={{ __html: product.description.replace(/\n/g, '<br />') }}
-                    />
-                  </div>
-                )}
-
-                {/* Product Features */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Product Features</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    {product.is_featured && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Featured Product
-                      </span>
-                    )}
-                    {product.is_ceo_chair && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        CEO Chair
-                      </span>
-                    )}
-                    {product.is_molded && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                        Molded
-                      </span>
-                    )}
-                    {product.is_gaming_chair && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                        Gaming Chair
-                      </span>
-                    )}
-                    {product.is_dining_chair && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                        Dining Chair
-                      </span>
-                    )}
-                    {product.is_visitor_sofa && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                        Auditorium Chair
-                      </span>
-                    )}
-                    {product.is_study_chair && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                        Study Chair
-                      </span>
-                    )}
-                    {product.is_outdoor_furniture && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
-                        Outdoor Furniture
-                      </span>
-                    )}
-                    {product.is_folding_furniture && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-800">
-                        Folding Furniture
-                      </span>
-                    )}
-                  </div>
+                          className="w-8 h-8 rounded-full border-2 border-gray-300 shadow-sm cursor-pointer hover:scale-110 transition-transform duration-200"
+                          style={{ backgroundColor: hexColor }}
+                          title={colorName.charAt(0).toUpperCase() + colorName.slice(1)}
+                        ></div>
+                      );
+                    });
+                  })()}
                 </div>
+              </div>
+            )}
+            {product.description && (
+              <div className="mb-6">
+                <h3 className="text-xl font-semibold mb-2">Description</h3>
+                <p className="text-gray-600 leading-relaxed">{product.description}</p>
+              </div>
+            )}
 
-                {/* Action Buttons - Always visible */}
-                <div className="flex flex-col sm:flex-row gap-4 mt-6">
-                  <AddToCartButton product={{
-                    id: product.id,
-                    name: product.name,
-                    price: product.price,
-                    slug: product.slug,
-                    image: product.images?.[0] || "https://via.placeholder.com/500", // Reverted to first image URL
-                    quantity: 1,
-                  } as AddToCartProduct} />
-                  <button 
-                    onClick={handleBuyNow} // Attach handleBuyNow
-                    className="flex-1 border-2 border-amber-600 text-amber-600 px-8 py-4 rounded-full font-semibold text-lg hover:bg-amber-600 hover:text-white transition-colors duration-300"
-                  >
-                    Buy Now
-                  </button>
-                </div>
+            {/* Product Features / Badges */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {product.is_featured && <span className="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Featured Product</span>}
+              {product.is_ceo_chair && <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">CEO Chair</span>}
+              {product.is_gaming_chair && <span className="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Gaming Chair</span>}
+              {product.is_dining_chair && <span className="bg-yellow-100 text-yellow-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Dining Chair</span>}
+              {product.is_visitor_sofa && <span className="bg-indigo-100 text-indigo-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Visitor Sofa</span>}
+              {product.is_study_chair && <span className="bg-pink-100 text-pink-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Study Chair</span>}
+              {product.is_outdoor_furniture && <span className="bg-orange-100 text-orange-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Outdoor Furniture</span>}
+              {product.is_folding_furniture && <span className="bg-teal-100 text-teal-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Folding Furniture</span>}
+              {product.is_molded && <span className="bg-red-100 text-red-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Molded Design</span>}
+              {product.show_in_office && <span className="bg-gray-100 text-gray-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Office Furniture</span>}
+            </div>
 
-                {/* Detailed Description - Moved below main info, with show more/hide */}
-                {product.detailed_description && (
-                  <div className="mt-6 bg-gray-50 p-6 rounded-2xl">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-3">Detailed Description</h3>
-                    <div className="text-gray-700 text-base">
-                      <div
-                        dangerouslySetInnerHTML={{
-                          __html: showFullDescription
-                            ? product.detailed_description.replace(/\n/g, '<br />')
-                            : renderedTruncatedDescription.replace(/\n/g, '<br />'),
-                        }}
-                      />
-                    </div>
-                    {product.detailed_description.length > 150 && (
-                      <button 
-                        onClick={() => setShowFullDescription(!showFullDescription)}
-                        className="text-amber-600 hover:underline mt-2 text-sm font-medium"
-                      >
-                        {showFullDescription ? 'Show Less' : 'Show More'}
-                      </button>
-                    )}
-                  </div>
-                )}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <AddToCartButton product={product} />
+              <button className="mt-8 w-full md:w-auto bg-amber-600 text-white py-3 px-8 rounded-full font-semibold text-lg hover:bg-amber-700 transition-colors duration-200">
+                Buy Now
+              </button>
+            </div>
 
-                {/* Contact Info */}
-                <div className="bg-gray-50 rounded-2xl p-6 mt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Need Help?</h3>
-                  <p className="text-gray-700 mb-4">
-                    Contact us for more information about this product or to place a custom order.
-                  </p>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Link 
-                      href="https://wa.me/923453593470" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="bg-white text-amber-600 px-6 py-3 rounded-full font-semibold hover:bg-amber-50 transition-colors duration-300 text-center"
-                    >
-                      WhatsApp Us
-                    </Link>
-                    <a 
-                      href="tel:+923453593470" 
-                      className="bg-white text-amber-600 px-6 py-3 rounded-full font-semibold hover:bg-amber-50 transition-colors duration-300 text-center"
-                    >
-                      Call Now
-                    </a>
-                  </div>
-                </div>
+            {/* Need Help? Section */}
+            {/* Need Help? Section */}
+            <div className="mt-8 pt-8 border-t border-gray-200">
+              <h2 className="text-xl font-semibold mb-3">Need Help?</h2>
+              <p className="text-gray-600 mb-4">Contact us for more information about this product or to place a custom order.</p>
+              <div className="flex gap-4">
+                <a 
+                  href="https://wa.me/923453593470" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center bg-green-500 text-white px-6 py-3 rounded-full font-semibold hover:bg-green-600 transition-colors duration-200"
+                >
+                  WhatsApp Us
+                </a>
+                <a 
+                  href="tel:+923453593470" 
+                  className="inline-flex items-center border-2 border-amber-600 text-amber-600 px-6 py-3 rounded-full font-semibold hover:bg-amber-600 hover:text-white transition-colors duration-200"
+                >
+                  Call Now
+                </a>
               </div>
             </div>
-          </div>
-        </section>
 
-        {/* Related Products */}
-        <section className="py-8 bg-gray-50">
-          <div className="container mx-auto px-4">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">Related Products</h2>
-            {relatedProducts.length > 0 ? (
+            {product.detailed_description && product.detailed_description.length > 0 && (
+              <div className="mt-6 border-t pt-6">
+                <h2 className="text-2xl font-semibold mb-3">Product Details</h2>
+                <div className="prose max-w-none text-gray-700">
+                  <PortableText value={product.detailed_description as unknown as import('@portabletext/types').TypedObject[]} />
+                </div>
+              </div>
+            )}
+            
+            <div className="mt-8 pt-8 border-t border-gray-200 text-sm text-gray-600">
+              <p><strong>SKU:</strong> {product._id}</p>
+              {product.subcategory && (
+                <p><strong>Subcategory:</strong> {product.subcategory.name}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Related Products Section */}
+        {relatedProducts.length > 0 && (
+          <section className="mt-16 py-8 bg-gray-50 rounded-lg shadow-inner">
+            <div className="container mx-auto px-4">
+              <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Related Products</h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6">
-                {relatedProducts.map((relatedProduct: Product) => {
+                {relatedProducts.map((relatedProduct: SanityProduct) => {
                   let discountPercentage = 0;
                   if (relatedProduct.original_price && relatedProduct.original_price > relatedProduct.price) {
                     discountPercentage = Math.round(((relatedProduct.original_price - relatedProduct.price) / relatedProduct.original_price) * 100);
                   }
+                  const productImageUrl = relatedProduct.images?.[0] ? urlForImage(relatedProduct.images[0]).url() : "/placeholder-product.jpg";
 
                   return (
                     <ProductCard
-                      key={relatedProduct.id}
-                      id={relatedProduct.id}
+                      key={relatedProduct._id}
+                      id={relatedProduct._id}
                       name={relatedProduct.name}
                       price={relatedProduct.price}
-                      originalPrice={relatedProduct.original_price}
-                      category={relatedProduct.categories?.name || 'Unknown'}
+                      originalPrice={relatedProduct.original_price ?? undefined}
+                      category={relatedProduct.category?.name || ''}
                       slug={relatedProduct.slug}
-                      rating={4.5}
-                      reviews={0}
-                      isNew={false}
+                      rating={relatedProduct.rating || 4.5}
+                      reviews={relatedProduct.reviews || 0}
+                      isNew={relatedProduct.is_new || false}
                       discount={discountPercentage}
-                      image={relatedProduct.images && relatedProduct.images.length > 0 && relatedProduct.images[0] ? relatedProduct.images[0] : "https://via.placeholder.com/500"} // Access url with robust fallback
+                      image={productImageUrl}
                     />
                   );
                 })}
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-600">No related products found in this category.</p>
+              <div className="text-center mt-12">
+                <Link href={`/categories/${product.category?.slug}`}
+                  className="btn-primary text-white px-8 py-4 rounded-full font-semibold text-lg hover:shadow-lg inline-flex items-center"
+                >
+                  View All {product.category?.name} Range
+                  <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                </Link>
               </div>
-            )}
-
-            <div className="text-center mt-12">
-              <Link 
-                href={`/categories/${product.categories?.slug || 'shop'}`}
-                className="inline-block bg-amber-600 text-white px-8 py-4 rounded-full font-semibold text-lg hover:shadow-lg whitespace-nowrap"
-              >
-                View All {product.categories?.name || 'Products'}
-              </Link>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
       </main>
     </div>
   );
+}
+
+export async function generateStaticParams() {
+  
+  const productsResult = await getAllProducts(); // Assuming getAllProducts fetches all products
+  
+
+  if (!productsResult || !productsResult.products) {
+    
+    return [];
+  }
+
+  const validSlugs = productsResult.products
+    .filter(product => {
+      const isSlugValid = !!product.slug;
+      
+      return isSlugValid;
+    })
+    .map(product => ({
+      slug: product.slug,
+    }));
+
+  
+  return validSlugs;
+}
+
+export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
+  // Ensure slug is a string or null from the start, providing a fallback empty string
+  const slug = params.slug;
+
+  if (!slug) {
+    return {
+      title: 'Product Not Found',
+      description: 'The requested product could not be found.',
+    };
+  }
+
+  const product = await getProductBySlug(slug);
+
+  if (!product) {
+    return {
+      title: 'Product Not Found',
+      description: 'The requested product could not be found.',
+    };
+  }
+
+  return {
+    title: `${product.name} - RK Enterprise`,
+    description: product.description || `Buy ${product.name} at RK Enterprise. Explore premium imported furniture.`, 
+    openGraph: {
+      title: `${product.name} - RK Enterprise`,
+      description: product.description || `Buy ${product.name} at RK Enterprise. Explore premium imported furniture.`,
+      images: product.images && typeof product.images[0] === 'object'
+        ? [urlForImage(product.images[0]).url()]
+        : [],
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${product.name} - RK Enterprise`,
+      description: product.description || `Buy ${product.name} at RK Enterprise. Explore premium imported furniture.`,
+      images: product.images && typeof product.images[0] === 'object'
+        ? [urlForImage(product.images[0]).url()]
+        : [],
+    }
+  };
 }

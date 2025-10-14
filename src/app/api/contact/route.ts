@@ -1,23 +1,38 @@
 import { NextResponse } from 'next/server';
+import { Resend } from 'resend';
 
-export async function POST(request: Request) {
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+export async function POST(req: Request) {
   try {
-    
-    const { firstName, lastName, email, phone, subject, message } = await request.json();
+    const { name, email, subject, message } = await req.json();
 
-    // No email sending for now, just acknowledge receipt.
-    // The form data (firstName, lastName, email, phone, subject, message) is still received.
-    console.log('Contact form received data:', { firstName, lastName, email, phone, subject, message });
-
-    return NextResponse.json({ message: 'Contact form submitted successfully (email sending is temporarily disabled).' }, { status: 200 });
-  } catch (error: unknown) {
-    console.error('Error sending email:', error);
-    let errorMessage = 'Failed to send email.';
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    } else if (typeof error === 'string') {
-      errorMessage = error;
+    if (!name || !email || !subject || !message) {
+      return NextResponse.json({ error: 'All fields are required.' }, { status: 400 });
     }
-    return NextResponse.json({ message: errorMessage, error: errorMessage }, { status: 500 });
+
+    const { data, error } = await resend.emails.send({
+      from: 'RK Enterprise Contact <onboarding@resend.dev>',
+      to: 'rk.enterprise.official@gmail.com',
+      subject: `New Contact Form Submission: ${subject}`,
+      reply_to: email,
+      html: `
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Subject:</strong> ${subject}</p>
+        <p><strong>Message:</strong></p>
+        <p>${message}</p>
+      `,
+    });
+
+    if (error) {
+      console.error('Resend email error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ message: 'Email sent successfully!', data }, { status: 200 });
+  } catch (error) {
+    console.error('API Error in contact route:', error);
+    return NextResponse.json({ error: 'Failed to send email.', details: (error as Error).message }, { status: 500 });
   }
 }

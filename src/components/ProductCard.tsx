@@ -4,13 +4,15 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
 import { useToast } from '@/components/Toast'; // Import useToast
+import { urlForImage } from '@/sanity/lib/image'; // Import urlForImage
+import { Image as Image_2 } from 'sanity'; // Import Sanity's Image type
 
 interface ProductCardProps {
   id: string;
   name: string;
   price: number;
   originalPrice?: number;
-  image?: string;
+  image?: Image_2 | string;
   category: string;
   slug: string;
   rating?: number; // Made optional as it's not used directly in rendering
@@ -30,9 +32,12 @@ const ProductCard = ({
   isNew = false,
   discount = 0
 }: ProductCardProps) => {
-  console.log('ProductCard: Received slug prop:', slug); // DEBUG LOG
   const { addToCart } = useCart();
   const { showToast } = useToast(); // Use the toast hook
+
+  const imageUrl = typeof image === 'object' && image !== null
+    ? urlForImage(image).url()
+    : image || "/placeholder-product.jpg";
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-PK', {
@@ -48,7 +53,7 @@ const ProductCard = ({
       id,
       name,
       price,
-      image: image || "https://via.placeholder.com/500", // Provide fallback for image
+      image: imageUrl, // Use imageUrl here
       slug,
       quantity: 1,
     });
@@ -63,9 +68,9 @@ const ProductCard = ({
         {/* Image Container */}
         <div className="relative h-32 sm:h-36 lg:h-40 bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
           {/* Product Image */}
-          {image && image !== "/placeholder-product.jpg" ? (
+          {imageUrl && imageUrl !== "/placeholder-product.jpg" ? (
             <Image
-              src={image}
+              src={imageUrl}
               alt={name}
               fill
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"

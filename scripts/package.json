@@ -1,0 +1,19 @@
+{
+  "name": "sanity-csv-importer",
+  "version": "1.0.0",
+  "description": "A script to import CSV data into Sanity.io",
+  "main": "import-csv.js",
+  "type": "module",
+  "scripts": {
+    "import": "node import-csv.js",
+    "delete": "node delete-documents.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@sanity/client": "^6.0.0",
+    "csv-parser": "^3.0.0",
+    "node-fetch": "^3.0.0"
+  }
+}

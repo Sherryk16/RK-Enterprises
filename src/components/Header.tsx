@@ -33,22 +33,15 @@ const Header = () => {
     setIsMenuOpen(false); // Close menu whenever pathname changes
   }, [pathname]);
 
-  console.log('isMenuOpen:', isMenuOpen); // Debug log for menu state
-
   useEffect(() => {
     let isMounted = true;
     (async () => {
       try {
         const categoriesData = await getCategoriesWithSubcategories(); // No need for sharedSubcategories anymore
         
-        console.log('Header: Raw categoriesData from DB:', JSON.stringify(categoriesData, null, 2)); // DEBUG LOG: Log full content
-        console.log('Header: Raw sharedSubcategories:', categoriesData); // DEBUG LOG
-
         if (isMounted) {
           const transformed = transformCategories(categoriesData || []);
           setNavCategories(transformed);
-          console.log('Header: Final Navigation Categories (after transform):', JSON.stringify(transformed, null, 2)); // CRITICAL DEBUG LOG
-          console.log('Final Navigation Categories (with shared subcategories):', transformed); // TEMP DEBUG LOG
         }
       } catch (e: unknown) {
         console.error("Error fetching navigation categories:", e); // Add error logging
@@ -209,7 +202,7 @@ const Header = () => {
               {navCategories.map((category: StructuredCategory) => {
                 const catSlug = category.slug || simpleSlugify(category.name || '');
                 return (
-                <div key={category.id} className="relative group">
+                <div key={category._id} className="relative group">
                   <Link
                     href={`/categories/${catSlug}`}
                     className="text-white hover:text-gray-200 font-medium text-sm flex items-center space-x-1" 
@@ -230,7 +223,7 @@ const Header = () => {
                           const subSlug = sub.slug || simpleSlugify(sub.name || '');
                           return (
                         <Link
-                            key={sub.id}
+                            key={sub._id}
                             href={`/categories/${catSlug}/${subSlug}`}
                           className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-amber-600"
                         >
@@ -273,7 +266,7 @@ const Header = () => {
                   {navCategories.map((category: StructuredCategory) => {
                     const catSlug = category.slug || simpleSlugify(category.name || '');
                     return (
-                    <div key={category.id} className="space-y-2">
+                    <div key={category._id} className="space-y-2">
                       <Link
                         href={`/categories/${catSlug}`}
                         onClick={() => handleLinkClick(`/categories/${catSlug}`)}
@@ -288,7 +281,7 @@ const Header = () => {
                             const subSlug = sub.slug || simpleSlugify(sub.name || '');
                             return (
                           <Link
-                              key={sub.id}
+                              key={sub._id}
                               href={`/categories/${catSlug}/${subSlug}`}
                               onClick={() => handleLinkClick(`/categories/${catSlug}/${subSlug}`)}
                             className="text-xs text-gray-600 hover:text-amber-600 block py-1"
