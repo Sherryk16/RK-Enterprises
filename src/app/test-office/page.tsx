@@ -6,7 +6,7 @@ import {
   SanityProduct,
   SanitySubcategory,
 } from '@/lib/products';
-import { client } from '../../sanity/lib/client'; // Ensure this path is correct
+import { sanityClient } from '../../sanity/lib/client'; // Ensure this path is correct and use sanityClient
 
 export default async function TestOfficePage() {
   try {
@@ -30,7 +30,7 @@ export default async function TestOfficePage() {
       );
 
       for (const sub of subcategories) {
-        const prods = await client.fetch<SanityProduct[]>(`*[_type == "product" && subcategory._ref == $subcategoryId] {
+        const prods = await sanityClient.fetch<SanityProduct[]>(`*[_type == "product" && subcategory._ref == $subcategoryId] {
           _id,
           name,
           subcategory,
