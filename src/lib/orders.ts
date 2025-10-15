@@ -1,5 +1,5 @@
 import { SanityProduct, SanityCategory, SanitySubcategory } from "@/types/sanity";
-import { client } from "@/sanity/lib/client";
+import { sanityClient } from "@/sanity/lib/client"; // Import sanityClient
 
 export interface OrderItemInput {
   product_id: string;
@@ -104,7 +104,7 @@ export async function getAllOrders(): Promise<SanityOrder[]> {
   }`;
 
   try {
-    const orders = await client.fetch<SanityOrder[]>(query);
+    const orders = await sanityClient.fetch<SanityOrder[]>(query);
     return orders;
   } catch (error) {
     console.error("Error fetching orders:", error);

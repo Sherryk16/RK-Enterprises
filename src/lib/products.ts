@@ -1,4 +1,4 @@
-import { client } from "@/sanity/lib/client";
+import { sanityClient } from "@/sanity/lib/client"; // Import sanityClient
 import { SanityProduct, SanityCategory, SanitySubcategory } from "@/types/sanity";
 
 // ===============================
@@ -34,7 +34,7 @@ const productFields = `
 // ===============================
 export async function getCategories(): Promise<SanityCategory[]> {
   const query = `*[_type == "category"] | order(name asc)`;
-  return await client.fetch<SanityCategory[]>(query);
+  return await sanityClient.fetch<SanityCategory[]>(query);
 }
 
 export async function getCategoryBySlug(slug: string): Promise<SanityCategory | null> {
@@ -44,7 +44,7 @@ export async function getCategoryBySlug(slug: string): Promise<SanityCategory | 
     "slug": slug.current,
     description
   }`;
-  return await client.fetch<SanityCategory | null>(query, { slug });
+  return await sanityClient.fetch<SanityCategory | null>(query, { slug });
 }
 
 // 🟢 Get all categories (simple)
@@ -56,7 +56,7 @@ export async function getAllCategories(): Promise<SanityCategory[]> {
     description
   } | order(name asc)`;
 
-  return await client.fetch<SanityCategory[]>(query);
+  return await sanityClient.fetch<SanityCategory[]>(query);
 }
 
 // 🟢 Get categories with subcategories
@@ -74,7 +74,7 @@ export async function getCategoriesWithSubcategories(): Promise<
     }
   } | order(name asc)`;
 
-  return await client.fetch(query);
+  return await sanityClient.fetch(query);
 }
 
 // ===============================
@@ -82,19 +82,19 @@ export async function getCategoriesWithSubcategories(): Promise<
 // ===============================
 export async function getSubcategories(): Promise<SanitySubcategory[]> {
   const query = `*[_type == "subcategory"] | order(name asc)`;
-  return await client.fetch<SanitySubcategory[]>(query);
+  return await sanityClient.fetch<SanitySubcategory[]>(query);
 }
 
 export async function getSubcategoriesByCategoryRef(
   categoryId: string
 ): Promise<SanitySubcategory[]> {
   const query = `*[_type == "subcategory" && references($categoryId)] | order(name asc)`;
-  return await client.fetch<SanitySubcategory[]>(query, { categoryId });
+  return await sanityClient.fetch<SanitySubcategory[]>(query, { categoryId });
 }
 
 export async function getSubcategoryBySlug(slug: string): Promise<SanitySubcategory | null> {
   const query = `*[_type == "subcategory" && slug.current == $slug][0]`;
-  return await client.fetch<SanitySubcategory | null>(query, { slug });
+  return await sanityClient.fetch<SanitySubcategory | null>(query, { slug });
 }
 
 // 🟢 Get all subcategories (used in shop page)
@@ -106,7 +106,7 @@ export async function getAllSubcategories(): Promise<SanitySubcategory[]> {
     "category": category->{_id, name, "slug": slug.current}
   } | order(name asc)`;
 
-  return await client.fetch<SanitySubcategory[]>(query);
+  return await sanityClient.fetch<SanitySubcategory[]>(query);
 }
 
 // ===============================
@@ -118,7 +118,7 @@ export async function getAllProducts(): Promise<{ products: SanityProduct[] }> {
   const query = `*[_type == "product"]{ ${productFields} } | order(created_at desc)`;
 
   try {
-    const products = await client.fetch<SanityProduct[]>(query);
+    const products = await sanityClient.fetch<SanityProduct[]>(query);
     console.log("✅ Total products fetched:", products.length);
     return { products };
   } catch (error) {
@@ -135,7 +135,7 @@ export async function getProductsByCategory(
   if (!category) throw new Error(`Category not found for slug: ${slug}`);
 
   const query = `*[_type == "product" && references($categoryId)]{ ${productFields} } | order(created_at desc)`;
-  const products = await client.fetch<SanityProduct[]>(query, { categoryId: category._id });
+  const products = await sanityClient.fetch<SanityProduct[]>(query, { categoryId: category._id });
 
   return { category, products };
 }
@@ -148,7 +148,7 @@ export async function getProductsBySubcategory(
   if (!subcategory) throw new Error(`Subcategory not found for slug: ${slug}`);
 
   const query = `*[_type == "product" && references($subcategoryId)]{ ${productFields} } | order(created_at desc)`;
-  const products = await client.fetch<SanityProduct[]>(query, { subcategoryId: subcategory._id });
+  const products = await sanityClient.fetch<SanityProduct[]>(query, { subcategoryId: subcategory._id });
 
   return { subcategory, products };
 }
@@ -162,20 +162,20 @@ export async function getRelatedProducts(
     ${productFields}
   } | order(created_at desc)[0...5]`;
 
-  const products = await client.fetch<SanityProduct[]>(query, { categoryId, currentProductId });
+  const products = await sanityClient.fetch<SanityProduct[]>(query, { categoryId, currentProductId });
   return products || [];
 }
 
 // 🟢 Get single product by slug
 export async function getProductBySlug(slug: string): Promise<SanityProduct | null> {
   const query = `*[_type == "product" && slug.current == $slug][0]{ ${productFields} }`;
-  return await client.fetch<SanityProduct | null>(query, { slug });
+  return await sanityClient.fetch<SanityProduct | null>(query, { slug });
 }
 
 // 🟢 Get featured products
 export async function getFeaturedProducts(): Promise<SanityProduct[]> {
   const query = `*[_type == "product" && is_featured == true]{ ${productFields} } | order(created_at desc)[0...10]`;
-  return await client.fetch<SanityProduct[]>(query);
+  return await sanityClient.fetch<SanityProduct[]>(query);
 }
 
 // ===============================

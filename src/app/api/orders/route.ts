@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { client } from '@/sanity/lib/client';
+import { sanityWriteClient } from '@/sanity/lib/client'; // Import sanityWriteClient
 import { OrderInput, OrderItemInput } from '@/lib/orders'; // Re-using existing types for consistency
 
 export async function POST(req: Request) {
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     };
 
     console.log('Attempting to create new order in Sanity:', JSON.stringify(newOrder, null, 2));
-    const result = await client.create(newOrder);
+    const result = await sanityWriteClient.create(newOrder);
     console.log('Sanity order creation successful:', JSON.stringify(result, null, 2));
 
     return NextResponse.json({ message: 'Order placed successfully!', orderId: result._id }, { status: 201 });
