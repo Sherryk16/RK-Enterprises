@@ -4,6 +4,9 @@ import { client } from "@/sanity/lib/client";
 export interface OrderItemInput {
   product_id: string;
   product_name: string;
+  product_slug: string; // Add product_slug to OrderItemInput
+  product_image?: string; // Add product_image to OrderItemInput
+  price_at_purchase: number; // Add price_at_purchase to OrderItemInput
   quantity: number;
 }
 

@@ -1,9 +1,10 @@
 import { getAllProducts } from '@/lib/products';
 import ProductImageDebug from '@/components/ProductImageDebug';
+import { Image } from 'sanity'; // Import Image from sanity
 
 interface Product {
-  id: string;
-  images?: string[];
+  _id: string; // Changed from id to _id
+  images?: Image[]; // Changed to Image[]
   name: string;
   // Add other properties that ProductImageDebug might use if necessary
 }
@@ -27,7 +28,7 @@ export default async function ProductImageTestPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {products?.slice(0, 12).map((product: Product) => (
-            <ProductImageDebug key={product.id} product={product} />
+            <ProductImageDebug key={product._id} product={product} /> // Use product._id for key and product prop
           ))}
         </div>
 

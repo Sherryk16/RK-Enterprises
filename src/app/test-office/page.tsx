@@ -13,7 +13,7 @@ export default async function TestOfficePage() {
     const categories: SanityCategory[] = await getAllCategories();
 
     const officeCategory = categories?.find(
-      (cat) => cat.name?.toLowerCase().includes('office') || cat.slug?.current.includes('office')
+      (cat) => cat.name?.toLowerCase().includes('office') || cat.slug?.includes('office')
     );
 
     // const officeProducts: SanityProduct[] = await getProductsByFlag('show_in_office');
@@ -26,7 +26,7 @@ export default async function TestOfficePage() {
     if (officeCategory) {
       const allSubcategories = await getAllSubcategories();
       subcategories = allSubcategories.filter(
-        (sub) => sub.category._ref === officeCategory._id
+        (sub) => sub.category && sub.category._id === officeCategory._id
       );
 
       for (const sub of subcategories) {
@@ -53,7 +53,7 @@ export default async function TestOfficePage() {
             {categories?.map((cat: SanityCategory) => (
               <div key={cat._id} className={`p-3 rounded ${cat.name?.toLowerCase().includes('office') ? 'bg-blue-100 border border-blue-300' : 'bg-gray-50'}`}>
                 <div className="font-semibold">{cat.name}</div>
-                <div className="text-sm text-gray-600">ID: {cat._id} | Slug: {cat.slug?.current || 'No slug'}</div>
+                <div className="text-sm text-gray-600">ID: {cat._id} | Slug: {cat.slug || 'No slug'}</div>
               </div>
             ))}
           </div>
@@ -65,7 +65,7 @@ export default async function TestOfficePage() {
           {officeCategory ? (
             <div className="bg-green-100 border border-green-300 p-4 rounded">
               <div className="font-semibold text-green-800">Found: {officeCategory.name}</div>
-              <div className="text-sm text-green-600">ID: {officeCategory._id} | Slug: {officeCategory.slug?.current || 'No slug'}</div>
+              <div className="text-sm text-green-600">ID: {officeCategory._id} | Slug: {officeCategory.slug || 'No slug'}</div>
             </div>
           ) : (
             <div className="bg-red-100 border border-red-300 p-4 rounded text-red-800">
@@ -97,7 +97,7 @@ export default async function TestOfficePage() {
             {subcategories.map((sub: SanitySubcategory) => (
               <div key={sub._id} className="p-3 bg-yellow-50 rounded">
                 <div className="font-semibold">{sub.name}</div>
-                <div className="text-sm text-gray-600">ID: {sub._id} | Slug: {sub.slug?.current || 'No slug'}</div>
+                <div className="text-sm text-gray-600">ID: {sub._id} | Slug: {sub.slug || 'No slug'}</div>
               </div>
             ))}
           </div>

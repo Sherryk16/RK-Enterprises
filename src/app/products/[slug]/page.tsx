@@ -10,11 +10,11 @@ import ProductImageGallery from '@/components/ProductImageGallery'; // Import th
 import ProductCard from '@/components/ProductCard'; // Import ProductCard
 
 interface ProductPageProps {
-  params: { slug: string };
+  params: Promise<{ slug: string }>;
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
-  const slug = params.slug;
+  const { slug } = await params;
 
   if (!slug) {
     notFound();
@@ -300,7 +300,7 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   // Ensure slug is a string or null from the start, providing a fallback empty string
-  const slug = params.slug;
+  const { slug } = await params;
 
   if (!slug) {
     return {

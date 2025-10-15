@@ -38,7 +38,12 @@ export async function getCategories(): Promise<SanityCategory[]> {
 }
 
 export async function getCategoryBySlug(slug: string): Promise<SanityCategory | null> {
-  const query = `*[_type == "category" && slug.current == $slug][0]`;
+  const query = `*[_type == "category" && slug.current == $slug][0]{
+    _id,
+    name,
+    "slug": slug.current,
+    description
+  }`;
   return await client.fetch<SanityCategory | null>(query, { slug });
 }
 
@@ -47,7 +52,8 @@ export async function getAllCategories(): Promise<SanityCategory[]> {
   const query = `*[_type == "category"]{
     _id,
     name,
-    "slug": slug.current
+    "slug": slug.current,
+    description
   } | order(name asc)`;
 
   return await client.fetch<SanityCategory[]>(query);

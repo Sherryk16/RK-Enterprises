@@ -10,11 +10,12 @@ import { urlForImage } from '@/sanity/lib/image';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 
-interface CategoryPageProps {
-  params?: { slug: string };
-}
+type CategoryPageProps = {
+  params: Promise<{ slug: string }>;
+};
 
-export default async function CategoryPage({ params }: CategoryPageProps) {
+export default async function CategoryPage(props: CategoryPageProps) {
+  const params = await props.params;
   const slug = params.slug;
 
   if (!slug) {
@@ -30,7 +31,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
     // Try normal slug lookup first
     category = await getCategoryBySlug(slug);
-    const { products: fetchedProducts } = await getProductsByCategory(slug); // Destructure to get products
+    const { products: fetchedProducts } = await getProductsByCategory(slug);
     products = fetchedProducts;
 
     console.log('=== DEBUG CATEGORY PAGE ===');
@@ -48,7 +49,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         notFound();
       }
       category = fallbackCategory;
-      const { products: fallbackProducts } = await getProductsByCategory(category.slug); // Destructure for fallback
+      const { products: fallbackProducts } = await getProductsByCategory(category.slug);
       products = fallbackProducts;
       console.log('Fallback category found:', category);
       console.log('Products after fallback:', products.length);
@@ -60,7 +61,6 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
     return (
       <div className="min-h-screen bg-white">
-        
         <main>
           {/* Category Header */}
           <section className="bg-gradient-to-r from-amber-50 to-orange-50 py-12">
@@ -70,7 +70,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                   {category?.name}
                 </h1>
                 <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
-                  {category?.description}
+                  Browse our collection of premium {category?.name.toLowerCase()}
                 </p>
                 <div className="mt-4">
                   <span className="bg-amber-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
@@ -99,8 +99,8 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
                         name={product.name}
                         price={product.price}
                         originalPrice={product.original_price ?? undefined}
-                        category={product.category?.name || ''} // Sanity category object has name
-                        slug={product.slug} // Changed from product.slug.current
+                        category={product.category?.name || ''}
+                        slug={product.slug}
                         rating={product.rating || 4.5}
                         reviews={product.reviews || 0}
                         isNew={product.is_new || false}
@@ -145,7 +145,6 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
             </div>
           </section>
         </main>
-
       </div>
     );
   } catch (error: unknown) {
@@ -158,7 +157,7 @@ export async function generateStaticParams() {
   try {
     const categories = await getAllCategories();
     return (categories || [])
-      .filter((category: SanityCategory) => category.slug) // Filter out categories without a valid slug
+      .filter((category: SanityCategory) => category.slug)
       .map((category: SanityCategory) => ({ slug: category.slug }));
   } catch (e) {
     console.error('Error generating static params for categories:', e);
@@ -166,8 +165,10 @@ export async function generateStaticParams() {
   }
 }
 
-export async function generateMetadata({ params }: CategoryPageProps) {
+export async function generateMetadata(props: CategoryPageProps) {
+  const params = await props.params;
   const slug = params.slug;
+  
   if (!slug) {
     return {
       title: 'Category Not Found',
@@ -185,7 +186,7 @@ export async function generateMetadata({ params }: CategoryPageProps) {
   }
 
   return {
-    title: category.name,
-    description: category.description || `Browse ${category.name} products.`,
+    title: `${category.name} | RK Enterprise`,
+    description: `Browse our premium collection of ${category.name.toLowerCase()}. High-quality furniture at competitive prices from RK Enterprise.`,
   };
 }

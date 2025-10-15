@@ -78,12 +78,12 @@ export const transformCategories = (
     }
 
     const groupId = existingCategory._id; // Changed from .id to ._id
-    const groupSlug = existingCategory.slug?.current || simpleSlugify(existingCategory.name); // Changed from .slug to .slug?.current
+    const groupSlug = existingCategory.slug || simpleSlugify(existingCategory.name); // Removed .current
 
     const subcategories: StructuredSubcategory[] = (existingCategory.subcategories || []).map(sub => ({
       _id: sub._id, // Changed from .id to ._id
       name: sub.name,
-      slug: sub.slug?.current || simpleSlugify(sub.name), // Changed from .slug to .slug?.current
+      slug: sub.slug || simpleSlugify(sub.name), // Removed .current
     }));
 
     return {

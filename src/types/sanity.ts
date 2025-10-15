@@ -11,6 +11,7 @@ export interface SanityCategory {
   _id: string;
   name: string;
   slug: string;
+  description?: string;
 }
 
 export interface SanitySubcategory {

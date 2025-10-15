@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { Image as SanityImage } from 'sanity'; // Import Sanity's Image type
+import { urlForImage } from '@/sanity/lib/image'; // Import urlForImage
 
 interface Product {
-  id: string;
+  _id: string; // Changed from id to _id
   name: string;
-  images?: string[];
+  images?: SanityImage[]; // Changed to SanityImage[]
 }
 
 interface ProductImageDebugProps {
@@ -17,12 +19,14 @@ export default function ProductImageDebug({ product }: ProductImageDebugProps) {
   const [imageStatus, setImageStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [errorMessage, setErrorMessage] = useState<string>('');
 
+  const imageUrl = product?.images?.[0] ? urlForImage(product.images[0]).url() : '/placeholder-product.jpg';
+
   useEffect(() => {
-    if (product?.images?.[0]) {
+    if (imageUrl && imageUrl !== '/placeholder-product.jpg') {
       setImageStatus('loading');
       setErrorMessage('');
     }
-  }, [product?.images]);
+  }, [imageUrl]);
 
   const handleImageLoad = () => {
     setImageStatus('success');
@@ -42,7 +46,7 @@ export default function ProductImageDebug({ product }: ProductImageDebugProps) {
         <div className="text-sm">
           <div className="font-medium text-gray-700">Image URL:</div>
           <div className="text-gray-600 break-all">
-            {product?.images?.[0] || 'No image URL'}
+            {imageUrl || 'No image URL'}
           </div>
         </div>
 
@@ -70,9 +74,9 @@ export default function ProductImageDebug({ product }: ProductImageDebugProps) {
 
         {/* Image Preview */}
         <div className="relative w-full h-48 bg-gray-100 rounded-lg overflow-hidden">
-          {product?.images?.[0] && product.images[0] !== "/placeholder-product.jpg" ? (
+          {imageUrl && imageUrl !== '/placeholder-product.jpg' ? (
             <Image
-              src={product.images[0]}
+              src={imageUrl}
               alt={product.name || 'Product image'}
               fill
               className="object-contain"
@@ -87,16 +91,16 @@ export default function ProductImageDebug({ product }: ProductImageDebugProps) {
         </div>
 
         {/* Direct Link */}
-        {product?.images?.[0] && (
+        {imageUrl && (
           <div className="text-sm">
             <div className="font-medium text-gray-700">Direct Link:</div>
             <a 
-              href={product.images[0]} 
+              href={imageUrl} 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline break-all"
             >
-              {product.images[0]}
+              {imageUrl}
             </a>
           </div>
         )}

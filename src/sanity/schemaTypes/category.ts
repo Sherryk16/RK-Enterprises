@@ -21,6 +21,12 @@ const category = {
       },
       validation: (Rule: Rule) => Rule.required(),
     },
+    {
+      name: 'description',
+      title: 'Description',
+      type: 'text',
+      rows: 3,
+    },
   ],
 }
 
