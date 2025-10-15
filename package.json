@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "ls -R .next/static/media || echo 'No static media directory found.'",
     "start": "next start",
     "lint": "eslint"
   },

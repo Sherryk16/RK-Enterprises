@@ -1,4 +1,3 @@
-import { SanityProduct, SanityCategory, SanitySubcategory } from "@/types/sanity";
 import { sanityClient } from "@/sanity/lib/client"; // Import sanityClient
 
 export interface OrderItemInput {
@@ -24,7 +23,6 @@ export interface OrderResponse {
   items: OrderItemInput[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function createOrder(orderData: OrderInput): Promise<OrderResponse> {
   try {
     const response = await fetch('/api/orders', {
