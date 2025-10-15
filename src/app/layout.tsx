@@ -6,8 +6,10 @@ import Footer from '@/components/Footer';
 import { CartProvider } from '@/context/CartContext';
 import { ToastProvider } from '@/components/Toast'; // Import ToastProvider
 import { Suspense } from 'react'; // Import Suspense
-import WhatsAppButton from '@/components/WhatsAppButton'; // Import WhatsAppButton
-import PerformanceOptimizer from '@/components/PerformanceOptimizer'; // Import PerformanceOptimizer
+import dynamic from 'next/dynamic'; // Import dynamic
+
+const WhatsAppButton = dynamic(() => import('@/components/WhatsAppButton'), { ssr: false });
+const PerformanceOptimizer = dynamic(() => import('@/components/PerformanceOptimizer'), { ssr: false });
 
 const inter = Inter({ subsets: ['latin'] });
 

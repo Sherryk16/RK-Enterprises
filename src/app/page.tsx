@@ -12,8 +12,8 @@ import { SanityProduct } from '@/lib/products'; // Import SanityProduct
 import { urlForImage } from '@/sanity/lib/image'; // Import urlForImage
 
 export const metadata: Metadata = {
-  title: 'RK Enterprise - #1 Premium Imported Furniture Store in Pakistan | Office & Home Furniture',
-  description: 'Shop Pakistan\'s largest collection of premium imported furniture at RK Enterprise. Office chairs, dining sets, outdoor furniture, study chairs & more. Free shipping nationwide. Best prices guaranteed!',
+  title: 'RK Enterprises Hub - Premium Imported Office, Dining, Gaming, Study & Home Furniture in Pakistan',
+  description: 'Shop Pakistan\'s largest collection of premium imported furniture at RK Enterprises Hub. Find ergonomic office chairs, stylish dining sets, executive, gaming, and study chairs, waiting benches & more. Free shipping nationwide. Best prices guaranteed!',
   keywords: [
     'furniture Pakistan',
     'imported furniture',
@@ -23,7 +23,12 @@ export const metadata: Metadata = {
     'study chairs',
     'executive chairs',
     'visitor chairs',
-    'RK Enterprise',
+    'CEO chair',
+    'manager chair',
+    'gaming chair',
+    'waiting bench',
+    'bar stools',
+    'RK Enterprises Hub',
     'furniture store Karachi',
     'furniture store Lahore',
     'furniture store Islamabad',
@@ -34,31 +39,33 @@ export const metadata: Metadata = {
     'furniture store Quetta',
     'premium furniture',
     'furniture online shopping',
-    'furniture delivery Pakistan'
+    'furniture delivery Pakistan',
+    'ergonomic chairs',
+    'modern furniture',
   ],
   openGraph: {
-    title: 'RK Enterprise - #1 Premium Imported Furniture Store in Pakistan',
-    description: 'Shop Pakistan\'s largest collection of premium imported furniture. Office chairs, dining sets, outdoor furniture & more. Free shipping nationwide!',
+    title: 'RK Enterprises Hub - Premium Imported Office, Dining, Gaming, Study & Home Furniture in Pakistan',
+    description: 'Shop Pakistan\'s largest collection of premium imported furniture. Find ergonomic office chairs, stylish dining sets, executive, gaming, and study chairs, waiting benches & more. Free shipping nationwide!',
     type: 'website',
     locale: 'en_PK',
-    siteName: 'RK Enterprise',
+    siteName: 'RK Enterprises Hub',
     images: [
       {
         url: '/sitelogo.png',
         width: 1200,
         height: 630,
-        alt: 'RK Enterprise - Premium Imported Furniture Store Pakistan',
+        alt: 'RK Enterprises Hub - Premium Imported Furniture Store Pakistan',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'RK Enterprise - #1 Premium Imported Furniture Store in Pakistan',
-    description: 'Shop Pakistan\'s largest collection of premium imported furniture. Office chairs, dining sets, outdoor furniture & more. Free shipping nationwide!',
+    title: 'RK Enterprises Hub - Premium Imported Office, Dining, Gaming, Study & Home Furniture in Pakistan',
+    description: 'Shop Pakistan\'s largest collection of premium imported furniture. Find ergonomic office chairs, stylish dining sets, executive, gaming, and study chairs, waiting benches & more. Free shipping nationwide!',
     images: ['/sitelogo.png'],
   },
   alternates: {
-    canonical: 'https://rkenterprise.com',
+    canonical: 'https://www.rkenterpriseshub.com',
   },
 };
 

@@ -170,7 +170,7 @@ export async function generateMetadata(props: SubcategoryPageProps): Promise<Met
   }
 
   return {
-    title: `${subcategory.name} - ${category.name} | RK Enterprise`,
-    description: `Browse our premium collection of ${subcategory.name.toLowerCase()} in the ${category.name.toLowerCase()} category. High-quality furniture at competitive prices from RK Enterprise.`,
+    title: `${subcategory.name} - ${category.name} Chairs & Furniture | RK Enterprises Hub Pakistan`,
+    description: `Discover premium imported ${subcategory.name.toLowerCase()} within the ${category.name.toLowerCase()} category at RK Enterprises Hub. Find ergonomic options for offices, homes, gaming, and study. Best prices with nationwide delivery in Pakistan.`,
   };
 }

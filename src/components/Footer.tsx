@@ -84,7 +84,7 @@ const Footer = () => {
                     href={`/categories/${category.slug}`}
                     className="text-gray-400 text-sm hover:text-white transition-colors duration-300"
                   >
-                    {category.name}
+                    {category.name} Chairs & Furniture
                   </Link>
                 </li>
               ))}

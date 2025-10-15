@@ -186,7 +186,7 @@ export async function generateMetadata(props: CategoryPageProps) {
   }
 
   return {
-    title: `${category.name} | RK Enterprise`,
-    description: `Browse our premium collection of ${category.name.toLowerCase()}. High-quality furniture at competitive prices from RK Enterprise.`,
+    title: `${category.name} Chairs & Furniture | RK Enterprises Hub Pakistan`,
+    description: `Explore a vast selection of premium imported ${category.name.toLowerCase()} chairs and furniture at RK Enterprises Hub. Find durable office chairs, ergonomic gaming chairs, comfortable dining sets, and stylish visitor benches. Best prices with nationwide delivery in Pakistan.`,
   };
 }

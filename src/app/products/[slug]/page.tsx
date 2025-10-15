@@ -42,6 +42,40 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   return (
     <div className="min-h-screen bg-white text-gray-800">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Product",
+            "name": product.name,
+            "image": product.images && product.images.length > 0 ? urlForImage(product.images[0]).url() : '/sitelogo.png',
+            "description": product.description || `Premium imported ${product.name} from RK Enterprises Hub. High-quality chairs and furniture for office, home, gaming, and study.`, 
+            "sku": product._id,
+            "brand": {
+              "@type": "Brand",
+              "name": "RK Enterprises Hub"
+            },
+            "offers": {
+              "@type": "Offer",
+              "url": `https://www.rkenterpriseshub.com/products/${product.slug}`,
+              "priceCurrency": "PKR",
+              "price": product.price,
+              "itemCondition": "https://schema.org/NewCondition",
+              "availability": "https://schema.org/InStock", // Assuming products are generally in stock
+              "seller": {
+                "@type": "Organization",
+                "name": "RK Enterprises Hub"
+              }
+            },
+            "aggregateRating": product.rating ? {
+              "@type": "AggregateRating",
+              "ratingValue": product.rating.toFixed(1), // Assuming rating is a number, format to 1 decimal
+              "reviewCount": product.reviews || 0 // Assuming reviews is a number
+            } : undefined
+          }),
+        }}
+      />
       <main className="container mx-auto px-4 py-8 md:py-12 lg:py-16">
         <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
           {/* Product Image Gallery */}
@@ -319,11 +353,11 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   }
 
   return {
-    title: `${product.name} - RK Enterprise`,
-    description: product.description || `Buy ${product.name} at RK Enterprise. Explore premium imported furniture.`, 
+    title: `${product.name} ${product.category?.name ? `- ${product.category.name} ` : ''}Chairs & Furniture | RK Enterprises Hub Pakistan`,
+    description: product.description || `Buy ${product.name}, a premium imported ${product.category?.name?.toLowerCase() || ''} chair/furniture at RK Enterprises Hub. ${product.is_ceo_chair ? 'Experience executive comfort. ' : ''}${product.is_gaming_chair ? 'Perfect for intense gaming sessions. ' : ''}${product.is_dining_chair ? 'Ideal for stylish dining rooms. ' : ''}Best prices with nationwide delivery in Karachi, Lahore, Islamabad & across Pakistan.`,
     openGraph: {
-      title: `${product.name} - RK Enterprise`,
-      description: product.description || `Buy ${product.name} at RK Enterprise. Explore premium imported furniture.`,
+      title: `${product.name} ${product.category?.name ? `- ${product.category.name} ` : ''}Chairs & Furniture | RK Enterprises Hub Pakistan`,
+      description: product.description || `Buy ${product.name}, a premium imported ${product.category?.name?.toLowerCase() || ''} chair/furniture at RK Enterprises Hub. ${product.is_ceo_chair ? 'Experience executive comfort. ' : ''}${product.is_gaming_chair ? 'Perfect for intense gaming sessions. ' : ''}${product.is_dining_chair ? 'Ideal for stylish dining rooms. ' : ''}Best prices with nationwide delivery in Karachi, Lahore, Islamabad & across Pakistan.`,
       images: product.images && typeof product.images[0] === 'object'
         ? [urlForImage(product.images[0]).url()]
         : [],
@@ -331,8 +365,8 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${product.name} - RK Enterprise`,
-      description: product.description || `Buy ${product.name} at RK Enterprise. Explore premium imported furniture.`,
+      title: `${product.name} ${product.category?.name ? `- ${product.category.name} ` : ''}Chairs & Furniture | RK Enterprises Hub Pakistan`,
+      description: product.description || `Buy ${product.name}, a premium imported ${product.category?.name?.toLowerCase() || ''} chair/furniture at RK Enterprises Hub. ${product.is_ceo_chair ? 'Experience executive comfort. ' : ''}${product.is_gaming_chair ? 'Perfect for intense gaming sessions. ' : ''}${product.is_dining_chair ? 'Ideal for stylish dining rooms. ' : ''}Best prices with nationwide delivery in Karachi, Lahore, Islamabad & across Pakistan.`,
       images: product.images && typeof product.images[0] === 'object'
         ? [urlForImage(product.images[0]).url()]
         : [],

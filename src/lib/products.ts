@@ -29,6 +29,19 @@ const productFields = `
   created_at
 `;
 
+const productCardFields = `
+  _id,
+  name,
+  price,
+  original_price,
+  images,
+  "category": category->{_id, name, "slug": slug.current},
+  "slug": slug.current,
+  rating,
+  reviews,
+  is_new,
+`;
+
 // ===============================
 // 🔹 CATEGORY FUNCTIONS
 // ===============================
@@ -119,7 +132,7 @@ export async function getAllSubcategories(): Promise<SanitySubcategory[]> {
 
 // 🟢 Get all products
 export async function getAllProducts(): Promise<{ products: SanityProduct[] }> {
-  const query = `*[_type == "product"]{ ${productFields} } | order(created_at desc)`;
+  const query = `*[_type == "product"]{ ${productCardFields} } | order(created_at desc)`;
 
   try {
     const products = await sanityClient.fetch<SanityProduct[]>(query);
@@ -138,7 +151,7 @@ export async function getProductsByCategory(
   const category = await getCategoryBySlug(slug);
   if (!category) throw new Error(`Category not found for slug: ${slug}`);
 
-  const query = `*[_type == "product" && category->slug.current == $slug]{ ${productFields} } | order(created_at desc)`;
+  const query = `*[_type == "product" && category->slug.current == $slug]{ ${productCardFields} } | order(created_at desc)`;
   const products = await sanityClient.fetch<SanityProduct[]>(query, { slug });
 
   return { category, products };
@@ -151,8 +164,8 @@ export async function getProductsBySubcategory(
   const subcategory = await getSubcategoryBySlug(slug);
   if (!subcategory) throw new Error(`Subcategory not found for slug: ${slug}`);
 
-  const query = `*[_type == "product" && references($subcategoryId)]{ ${productFields} } | order(created_at desc)`;
-  const products = await sanityClient.fetch<SanityProduct[]>(query, { subcategoryId: subcategory._id });
+  const query = `*[_type == "product" && subcategory->slug.current == $slug]{ ${productCardFields} } | order(created_at desc)`;
+  const products = await sanityClient.fetch<SanityProduct[]>(query, { slug });
 
   return { subcategory, products };
 }
@@ -163,7 +176,7 @@ export async function getRelatedProducts(
   currentProductId: string
 ): Promise<SanityProduct[]> {
   const query = `*[_type == "product" && category._ref == $categoryId && _id != $currentProductId]{
-    ${productFields}
+    ${productCardFields}
   } | order(created_at desc)[0...5]`;
 
   const products = await sanityClient.fetch<SanityProduct[]>(query, { categoryId, currentProductId });
@@ -178,7 +191,7 @@ export async function getProductBySlug(slug: string): Promise<SanityProduct | nu
 
 // 🟢 Get featured products
 export async function getFeaturedProducts(): Promise<SanityProduct[]> {
-  const query = `*[_type == "product" && is_featured == true]{ ${productFields} } | order(created_at desc)[0...10]`;
+  const query = `*[_type == "product" && is_featured == true]{ ${productCardFields} } | order(created_at desc)[0...10]`;
   return await sanityClient.fetch<SanityProduct[]>(query);
 }
 
