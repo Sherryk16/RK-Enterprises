@@ -88,7 +88,11 @@ export async function getSubcategories(): Promise<SanitySubcategory[]> {
 export async function getSubcategoriesByCategoryRef(
   categoryId: string
 ): Promise<SanitySubcategory[]> {
-  const query = `*[_type == "subcategory" && references($categoryId)] | order(name asc)`;
+  const query = `*[_type == "subcategory" && references($categoryId)]{
+    _id,
+    name,
+    "slug": slug.current
+  } | order(name asc)`;
   return await sanityClient.fetch<SanitySubcategory[]>(query, { categoryId });
 }
 
@@ -134,8 +138,8 @@ export async function getProductsByCategory(
   const category = await getCategoryBySlug(slug);
   if (!category) throw new Error(`Category not found for slug: ${slug}`);
 
-  const query = `*[_type == "product" && references($categoryId)]{ ${productFields} } | order(created_at desc)`;
-  const products = await sanityClient.fetch<SanityProduct[]>(query, { categoryId: category._id });
+  const query = `*[_type == "product" && category->slug.current == $slug]{ ${productFields} } | order(created_at desc)`;
+  const products = await sanityClient.fetch<SanityProduct[]>(query, { slug });
 
   return { category, products };
 }

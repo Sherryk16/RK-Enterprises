@@ -1,35 +1,41 @@
 // app/categories/[slug]/page.tsx
-import { notFound } from 'next/navigation';
-import Link from 'next/link';
 import ProductCard from '@/components/ProductCard';
 import {
   getCategoryBySlug,
   getProductsByCategory,
+  getProductsBySubcategory, // Import this
+  getSubcategoryBySlug, // Import this
+  SanityCategory,
   SanityProduct,
+  SanitySubcategory, // Import this
   getAllCategories,
+  getSubcategoriesByCategoryRef, // Import this
 } from '@/lib/products';
 import { urlForImage } from '@/sanity/lib/image';
+import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { Metadata } from 'next';
 
-type CategoryPageProps = {
-  params: Promise<{ slug: string }>;
-};
+interface SubcategoryPageProps {
+  params: Promise<{ slug: string; subslug: string }>;
+}
 
-export default async function CategoryPage(props: CategoryPageProps) {
+export default async function SubcategoryPage(props: SubcategoryPageProps) {
   const params = await props.params;
-  const { slug } = params;
+  const { slug, subslug } = params;
 
-  if (!slug) {
+  if (!slug || !subslug) {
     notFound();
   }
 
   const category = await getCategoryBySlug(slug);
+  const subcategory = await getSubcategoryBySlug(subslug);
 
-  if (!category) {
+  if (!category || !subcategory) {
     notFound();
   }
 
-  const { products } = await getProductsByCategory(slug);
+  const { products } = await getProductsBySubcategory(subslug);
 
   return (
     <div className="min-h-screen bg-white">
@@ -37,9 +43,9 @@ export default async function CategoryPage(props: CategoryPageProps) {
         {/* Header Section */}
         <section className="bg-gradient-to-r from-amber-600 to-orange-600 text-white py-16">
           <div className="container mx-auto px-4 text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">{category.name}</h1>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">{subcategory.name}</h1>
             <p className="text-xl text-amber-100 max-w-3xl mx-auto">
-              Explore our premium collection of {category.name.toLowerCase()}
+              Explore our premium collection of {subcategory.name.toLowerCase()} in {category.name.toLowerCase()}
             </p>
             <div className="mt-6">
               <span className="bg-white text-amber-600 px-6 py-2 rounded-full text-sm font-semibold">
@@ -88,23 +94,23 @@ export default async function CategoryPage(props: CategoryPageProps) {
               <div className="text-center py-16">
                 <div className="text-6xl mb-4">📦</div>
                 <h3 className="text-2xl font-bold text-gray-800 mb-2">
-                  No Products Found in {category.name}
+                  No Products Found in {subcategory.name}
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  We couldn&apos;t find any products in this category yet.
+                  We couldn&apos;t find any products in this subcategory yet.
                 </p>
                 <div className="space-x-4">
                   <Link
-                    href="/shop"
+                    href={`/categories/${category.slug}`}
                     className="bg-amber-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-amber-700 transition"
                   >
-                    View All Products
+                    Back to {category.name}
                   </Link>
                   <Link
-                    href="/"
+                    href="/shop"
                     className="bg-gray-200 text-gray-800 px-6 py-3 rounded-full font-semibold hover:bg-gray-300 transition"
                   >
-                    Return to Home
+                    View All Products
                   </Link>
                 </div>
               </div>
@@ -135,27 +141,36 @@ export default async function CategoryPage(props: CategoryPageProps) {
 
 export async function generateStaticParams() {
   const categories = await getAllCategories();
+  if (!categories) return [];
 
-  return categories.map((category) => ({
-    slug: category.slug,
-  }));
+  const paramsPromises = categories.map(async (category) => {
+    const subcategories = await getSubcategoriesByCategoryRef(category._id);
+    return subcategories.map((sub: SanitySubcategory) => ({
+      slug: category.slug,
+      subslug: sub.slug as string, // Explicitly cast to string
+    }));
+  });
+
+  const allParams = await Promise.all(paramsPromises);
+  return allParams.flat();
 }
 
-export async function generateMetadata(props: CategoryPageProps): Promise<Metadata> {
+export async function generateMetadata(props: SubcategoryPageProps): Promise<Metadata> {
   const params = await props.params;
-  const { slug } = params;
+  const { slug, subslug } = params;
 
   const category = await getCategoryBySlug(slug);
+  const subcategory = await getSubcategoryBySlug(subslug);
 
-  if (!category) {
+  if (!category || !subcategory) {
     return {
-      title: 'Category Not Found',
-      description: 'The requested category could not be found.',
+      title: 'Subcategory Not Found',
+      description: 'The requested subcategory could not be found.',
     };
   }
 
   return {
-    title: `${category.name} | RK Enterprise`,
-    description: `Browse our premium collection of ${category.name.toLowerCase()}. High-quality furniture at competitive prices from RK Enterprise.`,
+    title: `${subcategory.name} - ${category.name} | RK Enterprise`,
+    description: `Browse our premium collection of ${subcategory.name.toLowerCase()} in the ${category.name.toLowerCase()} category. High-quality furniture at competitive prices from RK Enterprise.`,
   };
 }
