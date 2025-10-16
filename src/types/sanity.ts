@@ -37,6 +37,10 @@ export interface SanityProduct {
   description?: string;
   detailed_description?: string;
   colors?: string[];
+  gtin8?: string; // Added GTIN-8
+  gtin12?: string; // Added GTIN-12
+  gtin13?: string; // Added GTIN-13
+  gtin14?: string; // Added GTIN-14
   is_featured?: boolean;
   is_ceo_chair?: boolean;
   is_molded?: boolean;

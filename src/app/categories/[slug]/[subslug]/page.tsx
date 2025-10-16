@@ -2,10 +2,8 @@
 import ProductCard from '@/components/ProductCard';
 import {
   getCategoryBySlug,
-  getProductsByCategory,
   getProductsBySubcategory, // Import this
   getSubcategoryBySlug, // Import this
-  SanityCategory,
   SanityProduct,
   SanitySubcategory, // Import this
   getAllCategories,
@@ -14,7 +12,7 @@ import {
 import { urlForImage } from '@/sanity/lib/image';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Metadata } from 'next';
+import { Metadata } from 'next'; // Import Metadata
 
 interface SubcategoryPageProps {
   params: Promise<{ slug: string; subslug: string }>;

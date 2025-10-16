@@ -83,8 +83,9 @@ const Footer = () => {
                   <Link 
                     href={`/categories/${category.slug}`}
                     className="text-gray-400 text-sm hover:text-white transition-colors duration-300"
+                    aria-label={`View ${category.name} Chairs & Furniture`}
                   >
-                    {category.name} Chairs & Furniture
+                    {category.name}
                   </Link>
                 </li>
               ))}

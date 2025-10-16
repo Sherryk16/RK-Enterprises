@@ -1,4 +1,4 @@
-import { getAllOrders, SanityOrder } from '@/lib/orders';
+import { getAllOrders } from '@/lib/orders';
 import Link from 'next/link';
 
 export default async function AdminOrdersPage() {

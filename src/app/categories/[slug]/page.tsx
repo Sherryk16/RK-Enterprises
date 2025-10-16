@@ -9,6 +9,7 @@ import {
 import { urlForImage } from '@/sanity/lib/image';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { Metadata } from 'next'; // Import Metadata
 
 type CategoryPageProps = {
   params: Promise<{ slug: string }>;
@@ -59,8 +60,40 @@ export default async function CategoryPage(props: CategoryPageProps) {
       notFound();
     }
 
+    const productSchema = products.map((product: SanityProduct) => ({
+      "@context": "https://schema.org",
+      "@type": "Product",
+      "name": product.name,
+      "image": product.images?.[0] ? urlForImage(product.images[0]).url() : undefined,
+      "description": `Premium ${product.category?.name || 'product'} from RK Enterprises Hub`,
+      "sku": product._id, // Using _id as a unique identifier
+      "brand": {
+        "@type": "Brand",
+        "name": "RK Enterprises Hub Pakistan"
+      },
+      "offers": {
+        "@type": "Offer",
+        "url": `${process.env.NEXT_PUBLIC_BASE_URL}/products/${product.slug}`,
+        "priceCurrency": "PKR",
+        "price": product.price,
+        "itemCondition": "https://schema.org/NewCondition",
+        "availability": "https://schema.org/InStock"
+      },
+      ...(product.rating && product.reviews !== undefined && product.reviews > 0 && {
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": product.rating,
+          "reviewCount": product.reviews
+        }
+      })
+    }));
+
     return (
       <div className="min-h-screen bg-white">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+        />
         <main>
           {/* Category Header */}
           <section className="bg-gradient-to-r from-amber-50 to-orange-50 py-12">
@@ -165,7 +198,7 @@ export async function generateStaticParams() {
   }
 }
 
-export async function generateMetadata(props: CategoryPageProps) {
+export async function generateMetadata(props: CategoryPageProps): Promise<Metadata> {
   const params = await props.params;
   const slug = params.slug;
   
@@ -177,7 +210,13 @@ export async function generateMetadata(props: CategoryPageProps) {
   }
   
   const category = await getCategoryBySlug(slug);
-  
+  const { products: fetchedProducts } = await getProductsByCategory(slug);
+  const products = fetchedProducts || [];
+
+  const imageUrl = products.length > 0 && products[0].images?.[0] 
+    ? urlForImage(products[0].images[0]).url() 
+    : process.env.NEXT_PUBLIC_BASE_URL + "/opengraph-image.png"; // Fallback image
+
   if (!category) {
     return {
       title: 'Category Not Found',
@@ -185,8 +224,34 @@ export async function generateMetadata(props: CategoryPageProps) {
     };
   }
 
+  const title = `${category.name} Chairs & Furniture | RK Enterprises Hub Pakistan`;
+  const description = `Explore a vast selection of premium imported ${category.name.toLowerCase()} chairs and furniture at RK Enterprises Hub. Find durable office chairs, ergonomic gaming chairs, comfortable dining sets, and stylish visitor benches. Best prices with nationwide delivery in Pakistan.`;
+
   return {
-    title: `${category.name} Chairs & Furniture | RK Enterprises Hub Pakistan`,
-    description: `Explore a vast selection of premium imported ${category.name.toLowerCase()} chairs and furniture at RK Enterprises Hub. Find durable office chairs, ergonomic gaming chairs, comfortable dining sets, and stylish visitor benches. Best prices with nationwide delivery in Pakistan.`,
+    metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"),
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `${process.env.NEXT_PUBLIC_BASE_URL}/categories/${slug}`,
+      siteName: 'RK Enterprises Hub Pakistan',
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [imageUrl],
+      creator: '@rkenterprises', // Replace with actual Twitter handle if available
+    },
   };
 }

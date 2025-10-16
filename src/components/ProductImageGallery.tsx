@@ -62,3 +62,5 @@ const ProductImageGallery = ({ images, productName }: ProductImageGalleryProps) 
 export default ProductImageGallery;
 
 
+
+

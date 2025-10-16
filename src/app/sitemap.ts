@@ -1,47 +1,42 @@
 import { MetadataRoute } from 'next';
-import { getAllCategories, getAllProducts, getAllSubcategories } from '@/lib/products';
-
-const baseUrl = 'https://www.rkenterpriseshub.com'; // Your deployed website URL
+import { getAllCategories, SanityCategory } from '@/lib/products';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+
   const categories = await getAllCategories();
-  const productsData = await getAllProducts(); // getAllProducts returns { products: SanityProduct[] }
-  const products = productsData.products;
-  const subcategories = await getAllSubcategories();
-
-  const categoryRoutes = categories.map((category) => ({
+  const categoryRoutes = (categories || []).map((category: SanityCategory) => ({
     url: `${baseUrl}/categories/${category.slug}`,
-    lastModified: new Date().toISOString(),
-  }));
-
-  const subcategoryRoutes = subcategories.map((sub) => ({
-    url: `${baseUrl}/categories/${sub.category?.slug}/${sub.slug}`,
-    lastModified: new Date().toISOString(),
-  }));
-
-  const productRoutes = products.map((product) => ({
-    url: `${baseUrl}/products/${product.slug}`,
-    lastModified: new Date(product.created_at || new Date()).toISOString(),
-  }));
-
-  // Add static routes
-  const staticRoutes = [
-    '/',
-    '/shop',
-    '/about',
-    '/contact',
-    '/privacy-policy',
-    '/terms-of-service',
-    // Add any other important static pages here
-  ].map((route) => ({
-    url: `${baseUrl}${route}`,
-    lastModified: new Date().toISOString(),
+    lastModified: new Date().toISOString(), // Assuming categories don't change very often
+    changeFrequency: 'weekly' as const,
+    priority: 0.8 as const,
   }));
 
   return [
-    ...staticRoutes,
+    {
+      url: baseUrl,
+      lastModified: new Date().toISOString(),
+      changeFrequency: 'daily' as const,
+      priority: 1 as const,
+    },
+    {
+      url: `${baseUrl}/shop`,
+      lastModified: new Date().toISOString(),
+      changeFrequency: 'daily' as const,
+      priority: 0.9 as const,
+    },
+    {
+      url: `${baseUrl}/about`,
+      lastModified: new Date().toISOString(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.7 as const,
+    },
+    {
+      url: `${baseUrl}/contact`,
+      lastModified: new Date().toISOString(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.7 as const,
+    },
     ...categoryRoutes,
-    ...subcategoryRoutes,
-    ...productRoutes,
   ];
 }

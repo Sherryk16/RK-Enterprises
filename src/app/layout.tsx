@@ -1,4 +1,3 @@
-import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/Header'; // Changed to default import
@@ -6,83 +5,75 @@ import Footer from '@/components/Footer';
 import { CartProvider } from '@/context/CartContext';
 import { ToastProvider } from '@/components/Toast'; // Import ToastProvider
 import { Suspense } from 'react'; // Import Suspense
-import dynamic from 'next/dynamic'; // Import dynamic
-
-const WhatsAppButton = dynamic(() => import('@/components/WhatsAppButton'), { ssr: false });
-const PerformanceOptimizer = dynamic(() => import('@/components/PerformanceOptimizer'), { ssr: false });
+import ClientSideOptimizers from '@/components/ClientSideOptimizers'; // Import the new client wrapper
+import { Metadata } from 'next'; // Import Metadata
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"),
   title: {
-    default: 'RK Enterprise - Premium Imported Furniture',
-    template: '%s | RK Enterprise'
+    default: 'RK Enterprises Hub - Premium Imported Furniture',
+    template: '%s | RK Enterprises Hub Pakistan',
   },
-  description: 'Your one-stop shop for quality imported furniture. Shop office chairs, dining sets, outdoor furniture, and more at unbeatable prices in Pakistan.',
-  keywords: ['furniture', 'office furniture', 'dining furniture', 'imported furniture', 'Pakistan', 'RK Enterprise'],
-  authors: [{ name: 'RK Enterprise' }],
-  creator: 'RK Enterprise',
-  publisher: 'RK Enterprise',
+  description: 'Shop Pakistan\'s largest collection of premium imported office chairs, dining sets, gaming chairs, study chairs, outdoor furniture & more. Best prices with nationwide delivery.',
+  applicationName: 'RK Enterprises Hub',
+  keywords: [
+    'RK Enterprises Hub',
+    'furniture Pakistan',
+    'imported furniture',
+    'office furniture',
+    'dining furniture',
+    'gaming chair',
+    'waiting bench',
+    'CEO chair',
+    'manager chair',
+    'study chair',
+    'plastic chair',
+    'steel chair',
+    'wooden chair',
+    'bar stools',
+    'outdoor furniture',
+    'home furniture',
+    'furniture online Pakistan',
+    'furniture delivery',
+    'best furniture prices Pakistan',
+  ],
+  authors: [{
+    name: 'RK Enterprises Hub',
+    url: 'https://www.rkenterpriseshub.com'
+  }],
+  creator: 'RK Enterprises Hub',
+  publisher: 'RK Enterprises Hub',
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
-  metadataBase: new URL('https://rkenterprise.com'), // Replace with your actual domain
-  alternates: {
-    canonical: '/',
-  },
   openGraph: {
     type: 'website',
-    locale: 'en_US',
-    url: 'https://rkenterprise.com', // Replace with your actual domain
-    title: 'RK Enterprise - Premium Imported Furniture',
-    description: 'Your one-stop shop for quality imported furniture. Shop office chairs, dining sets, outdoor furniture, and more at unbeatable prices in Pakistan.',
-    siteName: 'RK Enterprise',
+    locale: 'en_PK',
+    url: 'https://www.rkenterpriseshub.com',
+    siteName: 'RK Enterprises Hub',
+    title: 'RK Enterprises Hub - Premium Imported Furniture',
+    description: 'Shop Pakistan\'s largest collection of premium imported office chairs, dining sets, gaming chairs, study chairs, outdoor furniture & more. Best prices with nationwide delivery.',
     images: [
       {
         url: '/sitelogo.png',
         width: 1200,
         height: 630,
-        alt: 'RK Enterprise Logo',
+        alt: 'RK Enterprises Hub - Premium Imported Furniture Store Pakistan',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'RK Enterprise - Premium Imported Furniture',
-    description: 'Your one-stop shop for quality imported furniture. Shop office chairs, dining sets, outdoor furniture, and more at unbeatable prices in Pakistan.',
+    site: '@rkenterprise',
+    creator: '@rkenterprise',
+    title: 'RK Enterprises Hub - Premium Imported Furniture',
+    description: 'Shop Pakistan\'s largest collection of premium imported office chairs, dining sets, gaming chairs, study chairs, outdoor furniture & more. Best prices with nationwide delivery.',
     images: ['/sitelogo.png'],
-    creator: '@rkenterprise', // Replace with your actual Twitter handle
   },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
-  },
-  icons: {
-    icon: [
-      { url: '/sitelogo.png', sizes: '32x32', type: 'image/png' },
-      { url: '/sitelogo.png', sizes: '16x16', type: 'image/png' },
-    ],
-    apple: [
-      { url: '/sitelogo.png', sizes: '180x180', type: 'image/png' },
-    ],
-    other: [
-      {
-        rel: 'mask-icon',
-        url: '/sitelogo.png',
-        color: '#000000',
-      },
-    ],
-  },
-  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
@@ -93,11 +84,11 @@ export default function RootLayout({
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": "RK Enterprise",
-    "description": "Your one-stop shop for quality imported furniture. Shop office chairs, dining sets, outdoor furniture, and more at unbeatable prices in Pakistan.",
-    "url": "https://rkenterprise.com",
-    "logo": "https://rkenterprise.com/sitelogo.png",
-    "image": "https://rkenterprise.com/sitelogo.png",
+    "name": "RK Enterprises Hub",
+    "description": "Pakistan's leading premium imported furniture store offering office chairs, dining sets, outdoor furniture, and more with nationwide delivery.",
+    "url": "https://www.rkenterpriseshub.com",
+    "logo": new URL('/sitelogo.png', process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000").toString(),
+    "image": new URL('/sitelogo.png', process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000").toString(),
     "sameAs": [
       "https://www.facebook.com/rkenterprise",
       "https://www.instagram.com/rkenterprise",
@@ -105,19 +96,21 @@ export default function RootLayout({
     ],
     "contactPoint": {
       "@type": "ContactPoint",
-      "telephone": "+92-XXX-XXXXXXX",
+      "telephone": "+92-345-3593470", // Updated phone number
       "contactType": "customer service",
       "availableLanguage": ["English", "Urdu"]
     },
     "address": {
       "@type": "PostalAddress",
       "addressCountry": "PK",
-      "addressLocality": "Pakistan"
+      "addressLocality": "Karachi",
+      "addressRegion": "Sindh",
+      "streetAddress": "Shop # G23, Panama Centre, Sir Shah Suleman Road, Opp. Essa Nagri, Hassan Square, Gulshan-e-Iqbal 13D"
     },
     "foundingDate": "2020",
     "founder": {
       "@type": "Person",
-      "name": "RK Enterprise Founder"
+      "name": "RK Enterprises Hub Founder" // Updated to reflect company name
     }
   };
 
@@ -135,19 +128,19 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className}>
-        <PerformanceOptimizer />
         <CartProvider>
-          <ToastProvider> 
-            <div className="flex flex-col min-h-screen">
-              <Header />
-              <main className="flex-grow">
-                <Suspense fallback={<div>Loading...</div>}> 
-                  {children}
-                </Suspense>
-              </main>
-              <Footer />
-              <WhatsAppButton /> {/* Add WhatsAppButton here */}
-            </div>
+          <ToastProvider>
+            <ClientSideOptimizers>
+              <div className="flex flex-col min-h-screen">
+                <Header />
+                <main className="flex-grow">
+                  <Suspense fallback={<div>Loading...</div>}> 
+                    {children}
+                  </Suspense>
+                </main>
+                <Footer />
+              </div>
+            </ClientSideOptimizers>
           </ToastProvider>
         </CartProvider>
       </body>

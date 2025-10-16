@@ -206,8 +206,9 @@ const Header = () => {
                   <Link
                     href={`/categories/${catSlug}`}
                     className="text-white hover:text-gray-200 font-medium text-sm flex items-center space-x-1" 
+                    aria-label={`View ${category.name} Chairs & Furniture`}
                   >
-                    <span>{category.name.charAt(0).toUpperCase() + category.name.slice(1)} Chairs & Furniture</span>
+                    <span>{category.name.charAt(0).toUpperCase() + category.name.slice(1)}</span>
                     {Array.isArray(category.subcategories) && category.subcategories.length > 0 && (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -245,7 +246,7 @@ const Header = () => {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="lg:hidden bg-white border-t shadow-lg">
+        <div className="lg:hidden bg-white border-t shadow-lg max-h-screen overflow-y-auto">
           <div className="container mx-auto px-4 py-4">
             <nav className="flex flex-col space-y-4">
               <Link href="/" onClick={() => handleLinkClick('/')} className="text-gray-700 hover:text-amber-600 font-medium py-2">
@@ -271,8 +272,9 @@ const Header = () => {
                         href={`/categories/${catSlug}`}
                         onClick={() => handleLinkClick(`/categories/${catSlug}`)}
                         className="text-sm font-medium text-gray-800 hover:text-amber-600 block"
+                        aria-label={`View ${category.name} Chairs & Furniture`}
                       >
-                        {category.name} Chairs & Furniture
+                        {category.name}
                       </Link>
                       {Array.isArray(category.subcategories) && category.subcategories.length > 0 && (
                       <div className="pl-4 space-y-1">

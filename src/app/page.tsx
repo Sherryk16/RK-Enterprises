@@ -93,13 +93,13 @@ export default async function Home() {
   const homepageStructuredData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    "name": "RK Enterprise",
+    "name": "RK Enterprises Hub",
     "description": "Pakistan's leading premium imported furniture store offering office chairs, dining sets, outdoor furniture, and more with nationwide delivery.",
-    "url": "https://rkenterprise.com",
-    "logo": "https://rkenterprise.com/sitelogo.png",
+    "url": "https://www.rkenterpriseshub.com",
+    "logo": "https://www.rkenterpriseshub.com/sitelogo.png",
     "potentialAction": {
       "@type": "SearchAction",
-      "target": "https://rkenterprise.com/shop?search={search_term_string}",
+      "target": "https://www.rkenterpriseshub.com/shop?search={search_term_string}",
       "query-input": "required name=search_term_string"
     },
     "sameAs": [

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sanityWriteClient } from '@/sanity/lib/client'; // Import sanityWriteClient
-import { OrderInput, OrderItemInput } from '@/lib/orders'; // Re-using existing types for consistency
+import { OrderItemInput } from '@/lib/orders'; // Re-using existing types for consistency
 
 export async function POST(req: Request) {
   try {

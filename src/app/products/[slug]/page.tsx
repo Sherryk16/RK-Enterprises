@@ -4,13 +4,83 @@ import Link from 'next/link';
 import { PortableText } from '@portabletext/react';
 import { getProductBySlug, getAllProducts, SanityProduct, getRelatedProducts } from '@/lib/products'; // Added getRelatedProducts
 import { urlForImage } from '@/sanity/lib/image';
-import { Metadata } from 'next';
+import { Metadata } from 'next'; // Import Metadata
 import AddToCartButton from '@/components/AddToCartButton'; // Import the new client component
 import ProductImageGallery from '@/components/ProductImageGallery'; // Import the new ProductImageGallery client component
 import ProductCard from '@/components/ProductCard'; // Import ProductCard
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata(
+  { params }: ProductPageProps,
+): Promise<Metadata> {
+  const { slug } = await params;
+
+  const product = await getProductBySlug(slug);
+
+  if (!product) {
+    return {
+      title: 'Product Not Found',
+      description: 'The requested product was not found.',
+    };
+  }
+
+  const imageUrl = product.images?.[0]
+    ? urlForImage(product.images[0]).url()
+    : process.env.NEXT_PUBLIC_BASE_URL + "/opengraph-image.png";
+
+  const title = `${product.name} | RK Enterprises Hub Pakistan`;
+  const description = product.description || `Explore the premium imported ${product.name} from RK Enterprises Hub. High-quality chairs and furniture for office, home, gaming, and study. Best prices with nationwide delivery in Pakistan.`;
+  const productKeywords = [
+    product.name,
+    product.category?.name || '',
+    product.subcategory?.name || '',
+    'RK Enterprises Hub',
+    'furniture Pakistan',
+    'imported furniture',
+    'office chair',
+    'dining chair',
+    'gaming chair',
+    'waiting bench',
+    'CEO chair',
+    'manager chair',
+    'bar stool',
+    'staff chair',
+    'study chair',
+    'outdoor furniture',
+    'home furniture',
+  ].filter(Boolean).join(', ');
+
+  return {
+    metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"),
+    title,
+    description,
+    keywords: productKeywords,
+    openGraph: {
+      title,
+      description,
+      url: `${process.env.NEXT_PUBLIC_BASE_URL}/products/${slug}`,
+      siteName: 'RK Enterprises Hub Pakistan',
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: product.name,
+        },
+      ],
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [imageUrl],
+      creator: '@rkenterprises',
+    },
+  };
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
@@ -52,13 +122,18 @@ export default async function ProductPage({ params }: ProductPageProps) {
             "image": product.images && product.images.length > 0 ? urlForImage(product.images[0]).url() : '/sitelogo.png',
             "description": product.description || `Premium imported ${product.name} from RK Enterprises Hub. High-quality chairs and furniture for office, home, gaming, and study.`, 
             "sku": product._id,
+            "mpn": product._id, // Using _id for MPN as well if no other unique identifier exists
+            "gtin8": product.gtin8 || undefined, // Add GTIN-8 if available
+            "gtin12": product.gtin12 || undefined, // Add GTIN-12 if available
+            "gtin13": product.gtin13 || undefined, // Add GTIN-13 if available
+            "gtin14": product.gtin14 || undefined, // Add GTIN-14 if available
             "brand": {
               "@type": "Brand",
               "name": "RK Enterprises Hub"
             },
             "offers": {
               "@type": "Offer",
-              "url": `https://www.rkenterpriseshub.com/products/${product.slug}`,
+              "url": `${process.env.NEXT_PUBLIC_BASE_URL}/products/${product.slug}`,
               "priceCurrency": "PKR",
               "price": product.price,
               "itemCondition": "https://schema.org/NewCondition",
@@ -68,11 +143,24 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 "name": "RK Enterprises Hub"
               }
             },
-            "aggregateRating": product.rating ? {
+            "aggregateRating": product.rating && product.reviews ? {
               "@type": "AggregateRating",
               "ratingValue": product.rating.toFixed(1), // Assuming rating is a number, format to 1 decimal
-              "reviewCount": product.reviews || 0 // Assuming reviews is a number
-            } : undefined
+              "reviewCount": product.reviews // Assuming reviews is a number
+            } : undefined,
+            "additionalProperty": [
+              ...(product.colors?.map((color: string) => ({
+                "@type": "PropertyValue",
+                "name": "Color",
+                "value": color,
+              })) || []),
+              // Remove materials as it's not in SanityProduct schema
+              // ...(product.materials?.map((material: string) => ({
+              //   "@type": "PropertyValue",
+              //   "name": "Material",
+              //   "value": material,
+              // })) || []),
+            ].filter(Boolean) as unknown as [] // Explicitly cast to an empty array type
           }),
         }}
       />
@@ -126,7 +214,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               <div className="mb-6">
                 <h3 className="text-xl font-semibold mb-2">Available Colors</h3>
                 <div className="flex flex-wrap gap-2">
-                  {(() => {
+                  {product.colors.map((colorName: string, index: number) => {
                     // Color name to hex mapping
                     const colorMap: { [key: string]: string } = {
                       'black': '#000000',
@@ -156,39 +244,18 @@ export default async function ProductPage({ params }: ProductPageProps) {
                       'tan': '#D2B48C',
                     };
                     
-                    // Get the raw colors data
-                    let colorsArray: string[] = [];
+                    const lowerColor = colorName.toLowerCase();
+                    const hexColor = colorMap[lowerColor] || lowerColor;
                     
-                    // Convert to string and extract color names
-                    const colorString = JSON.stringify(product.colors);
-                    
-                    // Extract all quoted words (color names)
-                    const matches = colorString.match(/\\?"([A-Za-z]+)\\?"/g);
-                    
-                    if (matches) {
-                      colorsArray = matches.map(m => 
-                        m.replace(/\\/g, '').replace(/"/g, '').trim()
-                      );
-                      // Remove duplicates
-                      colorsArray = [...new Set(colorsArray)];
-                    }
-                    
-                    console.log('Extracted colors:', colorsArray);
-                    
-                    return colorsArray.map((colorName: string, index: number) => {
-                      const lowerColor = colorName.toLowerCase();
-                      const hexColor = colorMap[lowerColor] || lowerColor;
-                      
-                      return (
-                        <div
-                          key={index}
-                          className="w-8 h-8 rounded-full border-2 border-gray-300 shadow-sm cursor-pointer hover:scale-110 transition-transform duration-200"
-                          style={{ backgroundColor: hexColor }}
-                          title={colorName.charAt(0).toUpperCase() + colorName.slice(1)}
-                        ></div>
-                      );
-                    });
-                  })()}
+                    return (
+                      <div
+                        key={index}
+                        className="w-8 h-8 rounded-full border-2 border-gray-300 shadow-sm cursor-pointer hover:scale-110 transition-transform duration-200"
+                        style={{ backgroundColor: hexColor }}
+                        title={colorName.charAt(0).toUpperCase() + colorName.slice(1)}
+                      ></div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -330,46 +397,4 @@ export async function generateStaticParams() {
 
   
   return validSlugs;
-}
-
-export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
-  // Ensure slug is a string or null from the start, providing a fallback empty string
-  const { slug } = await params;
-
-  if (!slug) {
-    return {
-      title: 'Product Not Found',
-      description: 'The requested product could not be found.',
-    };
-  }
-
-  const product = await getProductBySlug(slug);
-
-  if (!product) {
-    return {
-      title: 'Product Not Found',
-      description: 'The requested product could not be found.',
-    };
-  }
-
-  return {
-    title: `${product.name} ${product.category?.name ? `- ${product.category.name} ` : ''}Chairs & Furniture | RK Enterprises Hub Pakistan`,
-    description: product.description || `Buy ${product.name}, a premium imported ${product.category?.name?.toLowerCase() || ''} chair/furniture at RK Enterprises Hub. ${product.is_ceo_chair ? 'Experience executive comfort. ' : ''}${product.is_gaming_chair ? 'Perfect for intense gaming sessions. ' : ''}${product.is_dining_chair ? 'Ideal for stylish dining rooms. ' : ''}Best prices with nationwide delivery in Karachi, Lahore, Islamabad & across Pakistan.`,
-    openGraph: {
-      title: `${product.name} ${product.category?.name ? `- ${product.category.name} ` : ''}Chairs & Furniture | RK Enterprises Hub Pakistan`,
-      description: product.description || `Buy ${product.name}, a premium imported ${product.category?.name?.toLowerCase() || ''} chair/furniture at RK Enterprises Hub. ${product.is_ceo_chair ? 'Experience executive comfort. ' : ''}${product.is_gaming_chair ? 'Perfect for intense gaming sessions. ' : ''}${product.is_dining_chair ? 'Ideal for stylish dining rooms. ' : ''}Best prices with nationwide delivery in Karachi, Lahore, Islamabad & across Pakistan.`,
-      images: product.images && typeof product.images[0] === 'object'
-        ? [urlForImage(product.images[0]).url()]
-        : [],
-      type: 'website',
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: `${product.name} ${product.category?.name ? `- ${product.category.name} ` : ''}Chairs & Furniture | RK Enterprises Hub Pakistan`,
-      description: product.description || `Buy ${product.name}, a premium imported ${product.category?.name?.toLowerCase() || ''} chair/furniture at RK Enterprises Hub. ${product.is_ceo_chair ? 'Experience executive comfort. ' : ''}${product.is_gaming_chair ? 'Perfect for intense gaming sessions. ' : ''}${product.is_dining_chair ? 'Ideal for stylish dining rooms. ' : ''}Best prices with nationwide delivery in Karachi, Lahore, Islamabad & across Pakistan.`,
-      images: product.images && typeof product.images[0] === 'object'
-        ? [urlForImage(product.images[0]).url()]
-        : [],
-    }
-  };
 }
